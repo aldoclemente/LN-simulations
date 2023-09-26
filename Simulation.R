@@ -98,7 +98,7 @@ setMethod("DensityEstimationSimulation", signature=c(method_name="character",n_o
 ### SpatialRegression Simulation specialization ###
 .SpatialRegressionSimulationObjectCtr <- setRefClass("SpatialRegressionSimulationObject", contains = "SimulationObject",
                                                      methods=list(
-                                                       update_error = function(y_hat, y_true, j){
+                                                       update_error = function(y_hat, y_true,i, j){
                                                          i=1
                                                          errors[(((j-1)*n_sim+i))] <<- mean((y_hat - y_true)^2)
                                                        }
@@ -166,9 +166,26 @@ setMethod("BlockSimulation",signature=c(x="list"),
           }
 )
 
-setMethod("boxplot", "BlockSimulation", function(x,...){
+setMethod("boxplot", "BlockSimulation", function(x, ORDER=NULL ,...){
   
-  # data
+  if(!is.null(ORDER)){
+  ORDER <- x$method_names[ORDER]
+  x$results$method <- factor(x$results$method, levels= ORDER)
+  
+  begin=0.25
+  end=0.95
+  border_col = darken(viridis(length(x$method_names), begin=begin,end=end), amount=0.25)
+  fill_col = viridis(length(x$method_names), begin=begin, end=end)
+  BORDER = c()
+  FILL = c()
+  for(i in 1:length(x$method_names)){
+    FILL = append(FILL, fill_col[i])
+    BORDER = append(BORDER, border_col[i])
+  }
+  ggFILL <-scale_fill_manual(values = FILL) 
+  ggBORDER <- scale_color_manual(values= BORDER) 
+  }
+  
   p<-ggplot(x$results)+
     geom_boxplot(aes(x=n_obs,
                      y=errors, group=interaction(method,n_obs),
@@ -181,7 +198,9 @@ setMethod("boxplot", "BlockSimulation", function(x,...){
       legend.background = element_rect(fill="white", color="black",
                                        linewidth =c(1,0.5)),
       legend.title = element_blank())
-  p  
-  
+  if(!is.null(ORDER)){
+  p <- p + ggFILL + ggBORDER
+  }
+  p
 })
 

@@ -1,8 +1,0 @@
-library(fdaPDE)
-library(spatstat)
-library(maptools)
-library(shp2graph)
-library(igraph)
-library(rgeos)
-library(spam)
-library(GWmodel)

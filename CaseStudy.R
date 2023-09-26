@@ -49,13 +49,7 @@ setMethod("KfoldsCrossValidation", signature=c(data="data.frame", seed="integer"
                                update_estimate = function(estimate,j){
                                  i=1
                                  estimates[[(((j-1)*n_sim+i))]] <<- estimate
-                               }#,
-                               # update_error = function(test_locs, j){
-                               #   i=1
-                               #   eval_locs <- fdaPDE::refine.by.splitting.mesh.1.5D(FEMbasis$mesh)$nodes
-                               #   coef <- estimates[[(((j-1)*n_sim+i))]]$coeff^2
-                               #   errors[(((j-1)*n_sim+i))] <<- mean(fdaPDE::eval.FEM(FEM(coef,FEMbasis), locations=eval_locs)) - 2*mean(fdaPDE::eval.FEM(estimates[[(((j-1)*n_sim+i))]],locations=as.matrix(test_locs)))
-                               # }
+                               }
                              ))
 
 setGeneric("CaseStudy", function(method_name, n_obs, FEMbasis) standardGeneric("CaseStudy"))

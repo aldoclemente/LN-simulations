@@ -311,6 +311,15 @@ as.LPP <-function(points_,L){
   return(as.lpp(x=points_[,1],y=points_[,2],L=L))
 }
 
+# 
+
+compute_dist_matrix = function(points1, points2, L){
+  lpp1 <- as.LPP(points1, L)
+  lpp2 <- as.LPP(points2, L)
+  ND <- crossdist.lpp(lpp1,lpp2)
+  return( ND )
+}
+
 # post processing --------------------------------------------------------------
 
 boxplot_RMSE <- function(RMSE,

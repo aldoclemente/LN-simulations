@@ -60,22 +60,58 @@ auxiliary_test1 = function(x, y, seg, tp, sigma= 0.125,
   
 }
 
-auxiliary_test2 = function(x, y, seg, tp, sigma= 0.125, 
-                           nodes.lpp = ppp(x = mesh$nodes[,1], y = mesh$nodes[,2], 
-                                           window = owin(xrange = c(min(mesh$nodes[,1]),max(mesh$nodes[,1])),
-                                                         yrange = c(min(mesh$nodes[,2]),max(mesh$nodes[,2])))),
-                           L = spatstat.linnet,
-                           source = sources)
-{ 
-  PP = ppp(x = x, y = y, window = nodes.lpp$window)
-  ND = crossdist.lpp(lpp(nodes.lpp, L), lpp(PP, L))
+# auxiliary_test2 = function(x, y, seg, tp, sigma= 0.125, 
+#                            nodes.lpp = ppp(x = mesh$nodes[,1], y = mesh$nodes[,2], 
+#                                            window = owin(xrange = c(min(mesh$nodes[,1]),max(mesh$nodes[,1])),
+#                                                          yrange = c(min(mesh$nodes[,2]),max(mesh$nodes[,2])))),
+#                            L = spatstat.linnet,
+#                            source = sources)
+# { 
+#   PP = ppp(x = x, y = y, window = nodes.lpp$window)
+#   ND = crossdist.lpp(lpp(nodes.lpp, L), lpp(PP, L))
+#   
+#   return(     1./3 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[1],]^2/(2*sigma^2)) + 
+#                 1./3 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[2],]^2/(2*sigma^2)) + 
+#                 1./3 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[3],]^2/(2*sigma^2)) )
+#   
+#   
+# }
+
+aux_density = auxiliary_test1
+
+f.exp = function(ND,source=63,sigma=0.125){
   
-  return(     1./3 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[1],]^2/(2*sigma^2)) + 
-                1./3 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[2],]^2/(2*sigma^2)) + 
-                1./3 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[3],]^2/(2*sigma^2)) )
+  nnodes = nrow(ND)
+  res = vector(mode="numeric", length=nnodes)
   
+  source.1 = source
+  distances.1 = ND[source.1,]
+  other.1 = vector(mode="integer")
+  for(i in 1:nnodes ){
+    res[i] = exp(-distances.1[i]/sigma)  
+  }
   
+  return(res)
 }
 
-aux_test = c(auxiliary_test1, auxiliary_test2)
+aux_test_regression =f.exp
 
+f.sin = function(ND,source=63,sigma=1e-5){
+  
+  #sigma = 0.125/24
+  nnodes = nrow(ND)
+  res = vector(mode="numeric", length=nnodes)
+  
+  source.1 = source
+  distances.1 = ND[source.1,]
+  other.1 = vector(mode="integer")
+  for(i in 1:nnodes){
+    
+    res[i] = sin(2*pi*distances.1[i]/sigma)*cos(2*pi*distances.1[i]/sigma)
+    
+  }
+  
+  return(res)
+}
+
+aux_test_regression_cov = f.sin
