@@ -33,7 +33,7 @@ library(viridis)
                                       })
 )
 
-setGeneric("Simulation", function(method_name, n_obs, n_sim, FEMbasis) standardGeneric("Simulation2"))
+setGeneric("Simulation", function(method_name, n_obs, n_sim, FEMbasis) standardGeneric("Simulation"))
 setMethod("Simulation", signature=c(method_name="character",n_obs="vector",n_sim="integer", FEMbasis="ANY"),
           function(method_name,n_obs,n_sim, FEMbasis){
             num_nodes <- nrow(FEMbasis$mesh$nodes)
@@ -61,42 +61,53 @@ setMethod("boxplot", "SimulationObject", function(x,...){
 })
 
 .BlockSimulationCtr <- setRefClass("BlockSimulation", 
-                                   fields = c(Simulations = "list"))
+                                   fields = c(Simulations = "list",
+                                              num_methods = "integer",
+                                              num_sim = "integer",
+                                              n_obs ="integer",
+                                              length_obs = "integer",
+                                              method_names ="character",
+                                              results ="data.frame"
+                                              ))
 
-setGeneric("BlockSimulation", function(simulations) standardGeneric("BlockSimulation"))
-setMethod("BlockSimulation",signature=c(simulations="list"),
-           function(simulations){
-             return(.BlockSimulationCtr(Simulations=simulations))
+setGeneric("BlockSimulation", function(x) standardGeneric("BlockSimulation"))
+setMethod("BlockSimulation",signature=c(x="list"),
+           function(x){
+             num_methods = length(x)
+             num_sim = x[[1]]$n_sim
+             n_obs = x[[1]]$n_obs
+             length_obs = length(n_obs)
+             method_names = vector(mode="character", length=num_methods)
+             # for each method, num_sim * length_obs errors
+             colNames = c("errors","n_obs","method")
+             results = matrix(NA,nrow=num_methods*num_sim*length_obs,ncol=length(colNames))
+             
+             for(meth in 1:num_methods){
+               tmp<- cbind(x[[meth]]$errors, 
+                           as.character(rep(x[[meth]]$n_obs, 
+                                            each=num_sim)),
+                           as.character(rep(x[[meth]]$method_name,
+                                            times=num_sim*length_obs)))
+               
+               results[(num_sim*length_obs*(meth-1) + 1):(num_sim*length_obs*(meth)),] = tmp
+               
+               method_names[meth] <- x[[meth]]$method_name
+               
+             }
+             
+             colnames(results) <- colNames
+             results <- as.data.frame(results)
+             results[,1] <- as.numeric(results[,1])
+             return(.BlockSimulationCtr(Simulations=x, num_methods=num_methods,
+                                        num_sim=num_sim,n_obs=n_obs,length_obs=length_obs,
+                                        method_names=method_names, results = results))
            }
 )
 
 setMethod("boxplot", "BlockSimulation", function(x,...){
-  num_methods = length(x$Simulations)
-  num_sim = x$Simulations[[1]]$n_sim
-  n_obs = x$Simulations[[1]]$n_obs
-  num_obs = length(n_obs)
-  method_names <- vector(mode="character", length=num_methods)
-  # for each method, num_sim * num_obs errors
-  colNames <- c("errors","n_obs","method")
-  data_plot <- matrix(NA,nrow=num_methods*num_sim*num_obs,ncol=length(colNames))
   
-  for(meth in 1:num_methods){
-    tmp<- cbind(x$Simulations[[meth]]$errors, 
-                     as.character(rep(x$Simulations[[meth]]$n_obs, 
-                           each=num_sim)),
-          as.character(rep(x$Simulations[[meth]]$method_name,
-                                         times=num_sim*num_obs)))
-                       
-    data_plot[(num_sim*num_obs*(meth-1) + 1):(num_sim*num_obs*(meth)),] = tmp
-    
-    method_names[meth] <- x$Simulations[[meth]]$method_name
-    
-  }
-  
-  colnames(data_plot) <- colNames
-  data_plot <- as.data.frame(data_plot)
-  data_plot[,1] <- as.numeric(data_plot[,1])
-  p<-ggplot(data_plot)+
+  # data
+  p<-ggplot(x$results)+
     geom_boxplot(aes(x=n_obs,
                      y=errors, group=interaction(method,n_obs),
                      fill=method, color = method))+
@@ -104,7 +115,10 @@ setMethod("boxplot", "BlockSimulation", function(x,...){
     labs(x="", y="") +
     theme(
       axis.ticks.x = element_blank(),
-      legend.position = c(0.85,0.85) )
+      legend.position = c(0.85,0.85), 
+      legend.background = element_rect(fill="white", color="black",
+                                       linewidth =c(1,0.5)),
+      legend.title = element_blank())
   p  
   
 })
