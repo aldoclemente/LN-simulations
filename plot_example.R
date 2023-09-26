@@ -92,11 +92,10 @@ locs[[2]] <-refine.by.splitting.mesh.1.5D(mesh)$nodes
 n_obs = c(nrow(locs[[1]]), nrow(locs[[2]]))
 n_sim = 5L
 
-SR_PDE <- Simulation(method_name = "SR-PDE", 
-                     n_obs = n_obs, n_sim =  n_sim,FEMbasis =  FEMbasis)
+DE_PDE <- DensityEstimationSimulation(method_name = "DE-PDE", n_obs = n_obs, n_sim =  n_sim,FEMbasis =  FEMbasis)
 
-SR_PDE2 <- Simulation(method_name = "SR-PDE2", 
-                      n_obs = n_obs, n_sim =  n_sim,FEMbasis =  FEMbasis)
+DE_PDE2 <- DensityEstimationSimulation(method_name = "DE-PDE2", n_obs = n_obs, n_sim =  n_sim,FEMbasis =  FEMbasis)
+
 for(j in 1:length(n_obs)){
 for(i in 1:n_sim){
   sol_exact=AUX(locs[[j]][,1],locs[[j]][,2])
@@ -104,21 +103,21 @@ for(i in 1:n_sim){
   #### Test 1.2: grid with exact GCV
   output_CPP<-smooth.FEM(observations=data, locations = locs[[j]], FEMbasis=FEMbasis, lambda=lambda,
                          lambda.selection.criterion='grid', DOF.evaluation='exact', lambda.selection.lossfunction='GCV')
-  SR_PDE$update_estimate(output_CPP$fit.FEM, i,j)
-  SR_PDE$update_error(true_field=sol_exact, test_locs=locs[[j]], i,j)
+  DE_PDE$update_estimate(output_CPP$fit.FEM, i,j)
+  DE_PDE$update_error(true_field=sol_exact, test_locs=locs[[j]], i,j)
   
-  SR_PDE2$update_estimate(output_CPP$fit.FEM, i,j)
-  SR_PDE2$update_error(true_field=sol_exact, test_locs=locs[[j]], i,j)
+  DE_PDE2$update_estimate(output_CPP$fit.FEM, i,j)
+  DE_PDE2$update_error(true_field=sol_exact, test_locs=locs[[j]], i,j)
 }
-SR_PDE$compute_mean_field(j)
-SR_PDE2$compute_mean_field(j)
+  DE_PDE$compute_mean_field(j)
+  DE_PDE2$compute_mean_field(j)
 }
 
-SR_PDE$plot_mean_field(1L)
-SR_PDE$plot_mean_field(2L)
+DE_PDE$plot_mean_field(1L)
+DE_PDE$plot_mean_field(2L)
 
-SR_PDE2$plot_mean_field(1L)
-SR_PDE2$plot_mean_field(2L)
+DE_PDE2$plot_mean_field(1L)
+DE_PDE2$plot_mean_field(2L)
 
 title.size <- 26
 MyTheme <- theme(
@@ -134,8 +133,8 @@ MyTheme <- theme(
                                    linewidth =c(1,0.5))
 )
 
-boxplot(SR_PDE) + MyTheme
-boxplot(SR_PDE2) + MyTheme
+boxplot(DE_PDE) + MyTheme
+boxplot(DE_PDE2) + MyTheme
 
 plot(FEM)
 library(viridis)
@@ -143,7 +142,7 @@ plot(FEM, linewidth=2) + scale_color_viridis()
 
 # BlockSimulation
 
-BLOCK <- BlockSimulation(list(SR_PDE, SR_PDE2))
+BLOCK <- BlockSimulation(list(DE_PDE, DE_PDE2))
 boxplot(BLOCK)
 
 {
@@ -163,4 +162,92 @@ ggBORDER <- scale_color_manual(values= BORDER)
 }
 
 boxplot(BLOCK) + ggFILL + ggBORDER
-boxplot(BLOCK) + ggFILL + ggBORDER + MyTheme
+boxplot(BLOCK) + ggFILL + ggBORDER + labs(title="ciao") +  MyTheme
+
+### Case Study ############################
+locs <- fdaPDE::refine.by.splitting.mesh.1.5D(mesh)$nodes
+colnames(locs) <- c("x","y") 
+locs <- as.data.frame(locs)
+source("CaseStudy.R")
+K <- 3
+KfoldObj <- KfoldsCrossValidation(locs,seed=3145L, K=3L)
+
+DE_PDE <- DensityEstimationCaseStudy(method_name = "DE-PDE",n_obs = KfoldObj$num_obs_kFold, FEMbasis = FEMbasis)
+DE_PDE2 <- DensityEstimationCaseStudy(method_name = "DE-PDE2",n_obs = KfoldObj$num_obs_kFold, FEMbasis = FEMbasis)
+
+lambda = 10^seq(from=-6, to=-3,length.out = 10)
+
+for(j in 1:K){
+  tmp = KfoldObj$get_data(j)
+  train_data = tmp$train_data
+  test_data = tmp$test_data
+  
+  output_CPP = fdaPDE::DE.FEM(data = cbind(train_data$x, train_data$y), FEMbasis = FEMbasis,
+                          lambda = lambda,
+                          preprocess_method ="RightCV",
+                          nfolds = 10)
+  
+  DE_PDE$update_estimate(estimate = FEM(exp(output_CPP$g), FEMbasis),j = j)
+  DE_PDE$update_error(test_locs = test_data, j=j) 
+  DE_PDE$compute_mean_field(j)
+  
+  DE_PDE2$update_estimate(estimate = FEM(exp(output_CPP$g), FEMbasis),j = j)
+  DE_PDE2$update_error(test_locs = test_data, j=j) 
+  DE_PDE2$compute_mean_field(j)
+}
+
+boxplot(DE_PDE) + MyTheme
+
+BLOCK_CASE_STUDY <- BlockCaseStudy(c(DE_PDE,DE_PDE2))
+boxplot(BLOCK_CASE_STUDY)
+
+{
+  library(colorspace)
+  begin=0.25
+  end=0.95
+  border_col = darken(viridis(length(BLOCK$method_names), begin=begin,end=end), amount=0.25)
+  fill_col = viridis(length(BLOCK$method_names), begin=begin, end=end)
+  BORDER = c()
+  FILL = c()
+  for(i in 1:length(BLOCK$method_names)){
+    FILL = append(FILL, fill_col[i])
+    BORDER = append(BORDER, border_col[i])
+  }
+  ggFILL <-scale_fill_manual(values = FILL) 
+  ggBORDER <- scale_color_manual(values= BORDER) 
+}
+
+boxplot(BLOCK_CASE_STUDY) + ggFILL + ggBORDER
+
+### SE VOLESSIMO INVERTIRE ORDINE 
+x <- BLOCK_CASE_STUDY$results
+x
+order_ <- sort(unique(x$method),decreasing = T)
+x$method <- factor(x$method, levels=order_)
+
+p<-ggplot(x)+
+  geom_boxplot(aes( x=method, y=errors, group=interaction(method),
+                    fill=method, color=method))+
+  scale_x_discrete(limits=order_)+
+  labs(x="", y="") +
+  theme(
+    axis.ticks.x = element_blank(),
+    legend.position = "none")
+p  
+
+{
+  library(colorspace)
+  begin=0.95 # 0.25
+  end=0.25   # 0.95
+  border_col = darken(viridis(length(order_), begin=begin,end=end), amount=0.25)
+  fill_col = viridis(length(order_), begin=begin, end=end)
+  BORDER = c()
+  FILL = c()
+  for(i in 1:length(order_)){
+    FILL = append(FILL, fill_col[i])
+    BORDER = append(BORDER, border_col[i])
+  }
+  ggFILL <-scale_fill_manual(values = FILL) 
+  ggBORDER <- scale_color_manual(values= BORDER) 
+}
+p + ggFILL + ggBORDER

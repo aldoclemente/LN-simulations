@@ -23,27 +23,43 @@ library(viridis)
                                       update_estimate = function(estimate,i,j){
                                         estimates[[(((j-1)*n_sim+i))]] <<- estimate
                                       },
-                                      update_error = function(true_field, test_locs, i, j){
-                                        estimated <- fdaPDE::eval.FEM(FEM=estimates[[(((j-1)*n_sim+i))]], locations = test_locs)
-                                        errors[(((j-1)*n_sim+i))] <<- mean( (true_field - estimated)^2)
-                                      },
+                                      # update_error = function(true_field, test_locs, i, j){
+                                      #   estimated <- fdaPDE::eval.FEM(FEM=estimates[[(((j-1)*n_sim+i))]], locations = test_locs)
+                                      #   errors[(((j-1)*n_sim+i))] <<- mean( (true_field - estimated)^2)
+                                      # },
                                       plot_mean_field = function(j, ...){
                                         
                                         plot(meanField[[j]], ...) + scale_color_viridis()
                                       })
 )
 
+.SimulationObjectCtrHelper <- function(method_name, n_obs, n_sim, FEMbasis) {
+  num_nodes <- nrow(FEMbasis$mesh$nodes)
+  nullFEM <- fdaPDE::FEM(rep(NA,times=num_nodes), FEMbasis)
+  estimates <- rep(list(), length=n_sim*length(n_obs))
+  errors <- rep(NA, times=n_sim*length(n_obs))
+  meanField <- rep(list(), length=length(n_obs))
+  return(list(
+    method_name=method_name, n_obs=n_obs, n_sim=n_sim,
+    estimates = estimates, meanField=meanField, errors=errors,FEMbasis=FEMbasis)
+  )
+}
 setGeneric("Simulation", function(method_name, n_obs, n_sim, FEMbasis) standardGeneric("Simulation"))
 setMethod("Simulation", signature=c(method_name="character",n_obs="vector",n_sim="integer", FEMbasis="ANY"),
           function(method_name,n_obs,n_sim, FEMbasis){
-            num_nodes <- nrow(FEMbasis$mesh$nodes)
-            nullFEM <- fdaPDE::FEM(rep(NA,times=num_nodes), FEMbasis)
-            estimates <- rep(list(), length=n_sim*length(n_obs))
-            errors <- rep(NA, times=n_sim*length(n_obs))
-            meanField <- rep(list(), length=length(n_obs))
+            # num_nodes <- nrow(FEMbasis$mesh$nodes)
+            # nullFEM <- fdaPDE::FEM(rep(NA,times=num_nodes), FEMbasis)
+            # estimates <- rep(list(), length=n_sim*length(n_obs))
+            # errors <- rep(NA, times=n_sim*length(n_obs))
+            # meanField <- rep(list(), length=length(n_obs))
+            # return(.SimulationObjectCtr(
+            #            method_name=method_name, n_obs=n_obs, n_sim=n_sim,
+            #            estimates = estimates, meanField=meanField, errors=errors,FEMbasis=FEMbasis))
+            aux_list = .SimulationObjectCtrHelper(method_name,n_obs,n_sim, FEMbasis)
             return(.SimulationObjectCtr(
-                       method_name=method_name, n_obs=n_obs, n_sim=n_sim,
-                       estimates = estimates, meanField=meanField, errors=errors,FEMbasis=FEMbasis))
+                       method_name=aux_list$method_name, n_obs=aux_list$n_obs, n_sim=aux_list$n_sim,
+                       estimates = aux_list$estimates, meanField=aux_list$meanField, errors=aux_list$errors,
+                       FEMbasis=aux_list$FEMbasis))
           })
 
 setMethod("boxplot", "SimulationObject", function(x,...){
@@ -60,6 +76,45 @@ setMethod("boxplot", "SimulationObject", function(x,...){
   
 })
 
+### Density Estimation Simulation specialization ###
+.DensityEstimationSimulationObjectCtr <- setRefClass("DensityEstimationSimulationObject", contains = "SimulationObject",
+                                                     methods=list(
+                                                       update_error = function(true_field, test_locs, i, j){
+                                                         estimated <- fdaPDE::eval.FEM(FEM=estimates[[(((j-1)*n_sim+i))]], locations = test_locs)
+                                                         errors[(((j-1)*n_sim+i))] <<- mean( (true_field - estimated)^2)
+                                                       }
+                                                     ))
+
+setGeneric("DensityEstimationSimulation", function(method_name, n_obs, n_sim, FEMbasis) standardGeneric("DensityEstimationSimulation"))
+setMethod("DensityEstimationSimulation", signature=c(method_name="character",n_obs="vector",n_sim="integer", FEMbasis="ANY"),
+          function(method_name, n_obs, n_sim, FEMbasis){
+            aux_list = .SimulationObjectCtrHelper(method_name,n_obs,n_sim, FEMbasis)
+            .DensityEstimationSimulationObjectCtr(method_name=aux_list$method_name, n_obs=aux_list$n_obs, n_sim=aux_list$n_sim,
+                                                  estimates = aux_list$estimates, meanField=aux_list$meanField, errors=aux_list$errors,
+                                                  FEMbasis=aux_list$FEMbasis)
+  
+})
+
+### SpatialRegression Simulation specialization ###
+.SpatialRegressionSimulationObjectCtr <- setRefClass("SpatialRegressionSimulationObject", contains = "SimulationObject",
+                                                     methods=list(
+                                                       update_error = function(y_hat, y_true, j){
+                                                         i=1
+                                                         errors[(((j-1)*n_sim+i))] <<- mean((y_hat - y_true)^2)
+                                                       }
+                                                     ))
+
+setGeneric("SpatialRegressionSimulation", function(method_name, n_obs, n_sim, FEMbasis) standardGeneric("SpatialRegressionSimulation"))
+setMethod("SpatialRegressionSimulation", signature=c(method_name="character",n_obs="vector",n_sim="integer", FEMbasis="ANY"),
+          function(method_name, n_obs, n_sim, FEMbasis){
+            aux_list = .SimulationObjectCtrHelper(method_name,n_obs,n_sim, FEMbasis)
+            .SpatialRegressionSimulationObjectCtr(method_name=aux_list$method_name, n_obs=aux_list$n_obs, n_sim=aux_list$n_sim,
+                                                  estimates = aux_list$estimates, meanField=aux_list$meanField, errors=aux_list$errors,
+                                                  FEMbasis=aux_list$FEMbasis)
+            
+          })
+
+
 .BlockSimulationCtr <- setRefClass("BlockSimulation", 
                                    fields = c(Simulations = "list",
                                               num_methods = "integer",
@@ -70,38 +125,45 @@ setMethod("boxplot", "SimulationObject", function(x,...){
                                               results ="data.frame"
                                               ))
 
+.BlockSimulationCtrHelper <- function(x){
+  num_methods = length(x)
+  num_sim = x[[1]]$n_sim
+  n_obs = x[[1]]$n_obs
+  length_obs = length(n_obs)
+  method_names = vector(mode="character", length=num_methods)
+  # for each method, num_sim * length_obs errors
+  colNames = c("errors","n_obs","method")
+  results = matrix(NA,nrow=num_methods*num_sim*length_obs,ncol=length(colNames))
+  
+  for(meth in 1:num_methods){
+    tmp<- cbind(x[[meth]]$errors, 
+                as.character(rep(x[[meth]]$n_obs, 
+                                 each=num_sim)),
+                as.character(rep(x[[meth]]$method_name,
+                                 times=num_sim*length_obs)))
+    
+    results[(num_sim*length_obs*(meth-1) + 1):(num_sim*length_obs*(meth)),] = tmp
+    
+    method_names[meth] <- x[[meth]]$method_name
+    
+  }
+  
+  colnames(results) <- colNames
+  results <- as.data.frame(results)
+  results[,1] <- as.numeric(results[,1])
+  return(list(Simulations=x, num_methods=num_methods,
+              num_sim=num_sim,n_obs=n_obs,length_obs=length_obs,
+              method_names=method_names, results = results))
+}
+
 setGeneric("BlockSimulation", function(x) standardGeneric("BlockSimulation"))
 setMethod("BlockSimulation",signature=c(x="list"),
-           function(x){
-             num_methods = length(x)
-             num_sim = x[[1]]$n_sim
-             n_obs = x[[1]]$n_obs
-             length_obs = length(n_obs)
-             method_names = vector(mode="character", length=num_methods)
-             # for each method, num_sim * length_obs errors
-             colNames = c("errors","n_obs","method")
-             results = matrix(NA,nrow=num_methods*num_sim*length_obs,ncol=length(colNames))
-             
-             for(meth in 1:num_methods){
-               tmp<- cbind(x[[meth]]$errors, 
-                           as.character(rep(x[[meth]]$n_obs, 
-                                            each=num_sim)),
-                           as.character(rep(x[[meth]]$method_name,
-                                            times=num_sim*length_obs)))
-               
-               results[(num_sim*length_obs*(meth-1) + 1):(num_sim*length_obs*(meth)),] = tmp
-               
-               method_names[meth] <- x[[meth]]$method_name
-               
-             }
-             
-             colnames(results) <- colNames
-             results <- as.data.frame(results)
-             results[,1] <- as.numeric(results[,1])
-             return(.BlockSimulationCtr(Simulations=x, num_methods=num_methods,
-                                        num_sim=num_sim,n_obs=n_obs,length_obs=length_obs,
-                                        method_names=method_names, results = results))
-           }
+          function(x){
+            aux_list <- .BlockSimulationCtrHelper(x)
+            .BlockSimulationCtr(Simulations=aux_list$Simulations, num_methods=aux_list$num_methods,
+                                num_sim=aux_list$num_sim,n_obs=aux_list$n_obs,length_obs=aux_list$length_obs,
+                                method_names=aux_list$method_names, results = aux_list$results)
+          }
 )
 
 setMethod("boxplot", "BlockSimulation", function(x,...){
