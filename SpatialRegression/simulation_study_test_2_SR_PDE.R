@@ -48,12 +48,12 @@ if(ntest==2){
   link<-l$linkfun
   inv.link<-l$linkinv
   
-  n_obs = c(100, 250, 500, 1000)
+  n_obs = as.integer(c(100, 250, 500, 1000))
   lambda = 10^seq(from=-5,to=0.,length.out=20)
   n_sim=30L
 }
 if(ntest==3){
-  n_obs = c(50, 100, 150, 250) # numbers of occurences
+  n_obs = as.integer(c(50, 100, 150, 250)) # numbers of occurences
   lambda = 10^seq(from=-4, to=-3,length.out = 20)
   sources = c(6,8)         
   n_sim = 30L
@@ -151,9 +151,11 @@ for(j in 1:length(n_obs)){
                             DOF.evaluation = "stochastic",
                             family = FAMILY) 
     
-    y_hat = eval.FEM(FEM(output_CPP$solution$f, FEMbasis), locations = locs)
+    lambda_pos <- output_CPP$optimization$lambda_position
+    y_hat = eval.FEM(FEM(output_CPP$solution$f[,lambda_pos], FEMbasis), locations = locs) + 
+            X[sample_,]%*% output_CPP$solution$beta[,lambda_pos]
     SR_PDE$update_estimate(estimate = output_CPP$fit.FEM,i = i, j=j)
-    SR_PDE$update_error(y_hat=y_hat , y_true=true_signal[sample_], i=i, j=j)
+    SR_PDE$update_error(y_hat=y_hat , y_true=inv.link(true_signal[sample_]), i=i, j=j)
     
     ### GWR ### ----------------------------------------------------------------
     data_ = data.frame(observations = obs,
@@ -177,7 +179,7 @@ for(j in 1:length(n_obs)){
                         dMat = net_dist)
     
     GWR$update_error(y_hat = GWR.ND$SDF$yhat,
-                     y_true = true_signal[sample_],i,j)
+                     y_true = inv.link(true_signal[sample_]),i,j) 
   }
   SR_PDE$compute_mean_field(j)
 }                                     
@@ -187,8 +189,7 @@ save(SR_PDE, GWR,
 
 SimulationBlock <- BlockSimulation(list(SR_PDE, GWR))
 SimulationBlock$method_names
-ORDER = c(2,1)
-boxplot(SimulationBlock, ORDER)
+boxplot(SimulationBlock, ORDER =c(1,2))
 
 SimulationBlock <- BlockSimulation(list(SR_PDE, GWR))
 SimulationBlock$method_names

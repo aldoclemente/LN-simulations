@@ -99,7 +99,6 @@ setMethod("DensityEstimationSimulation", signature=c(method_name="character",n_o
 .SpatialRegressionSimulationObjectCtr <- setRefClass("SpatialRegressionSimulationObject", contains = "SimulationObject",
                                                      methods=list(
                                                        update_error = function(y_hat, y_true,i, j){
-                                                         i=1
                                                          errors[(((j-1)*n_sim+i))] <<- mean((y_hat - y_true)^2)
                                                        }
                                                      ))
