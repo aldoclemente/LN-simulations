@@ -152,8 +152,8 @@ for(j in 1:length(n_obs)){
                             family = FAMILY) 
     
     lambda_pos <- output_CPP$optimization$lambda_position
-    y_hat = eval.FEM(FEM(output_CPP$solution$f[,lambda_pos], FEMbasis), locations = locs) + 
-            X[sample_,]%*% output_CPP$solution$beta[,lambda_pos]
+    y_hat = inv.link(eval.FEM(FEM(output_CPP$solution$f[,lambda_pos], FEMbasis), locations = locs) + 
+            X[sample_,]%*% output_CPP$solution$beta[,lambda_pos])
     SR_PDE$update_estimate(estimate = output_CPP$fit.FEM,i = i, j=j)
     SR_PDE$update_error(y_hat=y_hat , y_true=inv.link(true_signal[sample_]), i=i, j=j)
     
@@ -184,14 +184,40 @@ for(j in 1:length(n_obs)){
   SR_PDE$compute_mean_field(j)
 }                                     
 
-save(SR_PDE, GWR,
-     file = paste0(folder.name,date_,".RData"))
+save(SR_PDE, GWR, folder.name,
+     file = paste0(folder.name,"data",".RData"))
+
+# Post processing --------------------------------------------------------------
 
 SimulationBlock <- BlockSimulation(list(SR_PDE, GWR))
-SimulationBlock$method_names
-boxplot(SimulationBlock, ORDER =c(1,2))
 
-SimulationBlock <- BlockSimulation(list(SR_PDE, GWR))
+title.size <- 26
+MyTheme <- theme(
+  axis.text = element_text(size=title.size-5),
+  axis.title = element_text(size=title.size),
+  title = element_text(size=title.size),
+  plot.title = element_text(hjust = 0.5),
+  legend.text = element_text(size=title.size-5),
+  legend.key.size = unit(1,"cm"),
+  legend.key.height = unit(1,"cm"),
+  legend.title = element_blank(),
+  legend.background = element_rect(fill="white", color="black",
+                                   linewidth =c(1,0.5))
+)
 SimulationBlock$method_names
-ORDER = c(1,2)
-boxplot(SimulationBlock,ORDER)
+pdf(paste0(folder.name,"test_2_RMSE.pdf"))
+boxplot(SimulationBlock, ORDER=c(1,2)) + 
+          labs(title="RMSE", x="observations") +
+          theme(legend.position = c(0.90,0.90)) +
+          MyTheme
+dev.off()
+
+pdf(paste0(folder.name, "test_2_domain.pdf"))
+plot(mesh, linewidth=0.75)
+dev.off()
+
+for(i in 1:length(n_obs)){
+  pdf(paste0(folder.name,"test_2_estimated_field_",n_obs[i],".pdf"))
+  print(SR_PDE$plot_mean_field(i,linewidth=0.75))
+  dev.off()
+}

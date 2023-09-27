@@ -47,14 +47,6 @@ library(viridis)
 setGeneric("Simulation", function(method_name, n_obs, n_sim, FEMbasis) standardGeneric("Simulation"))
 setMethod("Simulation", signature=c(method_name="character",n_obs="vector",n_sim="integer", FEMbasis="ANY"),
           function(method_name,n_obs,n_sim, FEMbasis){
-            # num_nodes <- nrow(FEMbasis$mesh$nodes)
-            # nullFEM <- fdaPDE::FEM(rep(NA,times=num_nodes), FEMbasis)
-            # estimates <- rep(list(), length=n_sim*length(n_obs))
-            # errors <- rep(NA, times=n_sim*length(n_obs))
-            # meanField <- rep(list(), length=length(n_obs))
-            # return(.SimulationObjectCtr(
-            #            method_name=method_name, n_obs=n_obs, n_sim=n_sim,
-            #            estimates = estimates, meanField=meanField, errors=errors,FEMbasis=FEMbasis))
             aux_list = .SimulationObjectCtrHelper(method_name,n_obs,n_sim, FEMbasis)
             return(.SimulationObjectCtr(
                        method_name=aux_list$method_name, n_obs=aux_list$n_obs, n_sim=aux_list$n_sim,
@@ -193,7 +185,7 @@ setMethod("boxplot", "BlockSimulation", function(x, ORDER=NULL ,...){
     labs(x="", y="") +
     theme(
       axis.ticks.x = element_blank(),
-      legend.position = c(0.85,0.85), 
+      legend.position = c(0.95,0.95), 
       legend.background = element_rect(fill="white", color="black",
                                        linewidth =c(1,0.5)),
       legend.title = element_blank())

@@ -37,9 +37,9 @@ plot(spatstat.linnet)
 # Test Hyperparameters ---------------------------------------------------------
 
 if(ntest==1){
-  n_obs = as.integer(c(50, 75, 100, 150))
+  n_obs = as.integer(c(25, 50, 75, 100))
   lambda = 10^seq(from=-5,to=0.,length.out=20)
-  n_sim = 1L
+  n_sim = 30L
   
 }
 if(ntest==2){ 
@@ -108,9 +108,10 @@ RR_Krig <- SpatialRegressionSimulation(method_name=method_names[4],
                                       n_obs = n_obs, n_sim = n_sim,
                                       FEMbasis = FEMbasis)  
 # Loop -------------------------------------------------------------------------
-for(j in 1:length(n_obs)){  
+for(j in 1:length(n_obs)){
+  cat(paste("-------------------  n = ", n_obs[j], "  -------------------\n", sep="") )
   for(i in 1:n_sim){
-    
+    cat(paste("-------------------  ", i, " / ", n_sim,"  -------------------\n", sep="") )
     sample_ = sample(1:nnodes, size=n_obs[j])
     
     locs = mesh$nodes[sample_,]
@@ -119,13 +120,13 @@ for(j in 1:length(n_obs)){
     net_dist = ND[sample_, sample_]
     
     ### SR-PDE ### ------------------------------------------------------------- 
-    output_CPP = smooth.FEM(observations = obs, 
+    invisible(capture.output(output_CPP <- smooth.FEM(observations = obs, 
                               locations = locs,
                               FEMbasis = FEMbasis,
                               lambda = lambda,
                               lambda.selection.criterion = "grid",
                               lambda.selection.lossfunction = "GCV",
-                              DOF.evaluation = "stochastic") # "stochastic"
+                              DOF.evaluation = "stochastic"))) # "stochastic"
     
       y_hat = eval.FEM(output_CPP$fit.FEM, locations = locs)
       SR_PDE$update_estimate(estimate = output_CPP$fit.FEM,i = i, j=j)
@@ -137,17 +138,17 @@ for(j in 1:length(n_obs)){
     Sp.data = SpatialPointsDataFrame(coords = locs,
                                      data = data_)
     # ND
-      bw.ND = bw.gwr(observations ~ 1,
+    invisible(capture.output(bw.ND <- bw.gwr(observations ~ 1,
                      data = Sp.data, 
                      approach="AIC", 
                      kernel="gaussian",
-                     dMat = net_dist)
+                     dMat = net_dist)))
       
-      GWR.ND = gwr.basic(observations ~ 1, 
+    invisible(capture.output(GWR.ND <- gwr.basic(observations ~ 1, 
                          data = Sp.data, 
                          kernel = "gaussian",
                          bw = bw.ND,
-                         dMat = net_dist)
+                         dMat = net_dist)))
       GWR$update_error(y_hat = GWR.ND$SDF$yhat,
                        y_true = true_signal[sample_],i,j)
     
@@ -187,15 +188,45 @@ for(j in 1:length(n_obs)){
   SR_PDE$compute_mean_field(j)
 }                                     
 
-save(SR_PDE, GWR, Lattice, RR_Krig,
-     file = paste0(folder.name,date_,".RData"))
+save(SR_PDE, GWR, Lattice, RR_Krig, folder.name,
+     file = paste0(folder.name,"data",".RData"))
+
+# Post processing --------------------------------------------------------------
 
 SimulationBlock <- BlockSimulation(list(SR_PDE, GWR, Lattice, RR_Krig))
+
+title.size <- 26
+MyTheme <- theme(
+  axis.text = element_text(size=title.size-5),
+  axis.title = element_text(size=title.size),
+  title = element_text(size=title.size),
+  plot.title = element_text(hjust = 0.5),
+  legend.text = element_text(size=title.size-5),
+  legend.key.size = unit(1,"cm"),
+  legend.key.height = unit(1,"cm"),
+  legend.title = element_blank(),
+  legend.background = element_rect(fill="white", color="black",
+                                   linewidth =c(1,0.5))
+)
 SimulationBlock$method_names
 ORDER = c(1,3,2,4)
-boxplot(SimulationBlock, ORDER)
+pdf(paste0(folder.name,"test_1_RMSE.pdf"))
+boxplot(SimulationBlock, ORDER) +
+labs(title="RMSE", x="observations") +
+  theme(legend.position = c(0.90,0.90)) +
+  MyTheme
+dev.off()
 
-SimulationBlock <- BlockSimulation(list(SR_PDE, GWR))
-SimulationBlock$method_names
-ORDER = c(1,2)
-boxplot(SimulationBlock,ORDER)
+pdf(paste0(folder.name, "test_1_domain.pdf"))
+plot(mesh, linewidth=0.5)
+dev.off()
+
+pdf(paste0(folder.name, "test_1_domain.pdf"))
+plot(mesh, linewidth=0.5)
+dev.off()
+
+for(i in 1:length(n_obs)){
+  pdf(paste0(folder.name,"test_1_estimated_field_",n_obs[i],".pdf"))
+  print(SR_PDE$plot_mean_field(i,linewidth=0.75))
+  dev.off()
+}
