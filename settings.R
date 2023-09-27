@@ -5,6 +5,7 @@ setting <-function(network = "" ){
   
   mesh = as.fdaPDE.SpatialLinesDataFrame(ORN.nt)
   mesh = normalize_mesh_unit(mesh)$mesh
+  mesh = refine.mesh.1.5D(mesh, delta=0.0125)
  
   FEMbasis = create.FEM.basis(mesh)
   

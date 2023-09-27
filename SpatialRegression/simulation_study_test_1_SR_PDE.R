@@ -5,7 +5,7 @@ rm(list=ls())
 setwd("SpatialRegression/")
 
 # loading packages and auxiliary functions
-source("packages.R")
+source("../packages.R")
 source("../utils.R")
 source("../settings.R")
 source("../plot.R")

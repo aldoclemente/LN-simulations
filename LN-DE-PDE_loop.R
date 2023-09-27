@@ -7,7 +7,7 @@ DE_PDE.FEM = KDE_PDE.FEM = KDE_ES.FEM = KDE_2D.FEM = VORONOI.FEM =
              matrix(0,nrow=nnodes,ncol= length(n))
 
 for(j in 1:length(n)){
-  cat(paste("###############  n = ", n[j], "  ###############\n", sep="") ) 
+  cat(paste("###############  n obs = ", n[j], "  ###############\n", sep="") ) 
   for( i in 1:nsim){
     cat(paste("###############  ", i, " / ", nsim,"  ###############\n", sep="") )
     PP = rlpp(n=n[j], f = DENSITY)  
