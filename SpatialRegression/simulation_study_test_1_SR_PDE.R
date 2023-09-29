@@ -42,13 +42,24 @@ if(ntest==1){
   n_sim = 30L
   
 }
-if(ntest==2){ 
-  n = c(100, 250, 500, 1000)
-  sources = c(32, 185, 400)
+if(ntest==2){
+  FAMILY="poisson"
+  l<-make.link("log")
+  link<-l$linkfun
+  inv.link<-l$linkinv
+  
+  n_obs = as.integer(c(100, 250, 500, 1000))
+  lambda = 10^seq(from=-5,to=0.,length.out=20)
+  n_sim=30L
 }
 if(ntest==3){
-  n = c(50, 100, 150, 250) # numbers of occurences
+  n_obs = as.integer(c(50, 100, 150, 250)) # numbers of occurences
+  lambda = 10^seq(from=-4, to=-3,length.out = 20)
   sources = c(6,8)         
+  n_sim = 30L
+  # test locations
+  locs.test = runiflpp(1000, spatstat.linnet)
+  locs.test = cbind(locs.test$data$x, locs.test$data$y)
 }
 set.seed(1234)
 
@@ -95,7 +106,7 @@ GWR <- SpatialRegressionSimulation(method_name=method_names[2],
                                       n_obs = n_obs, n_sim = n_sim,
                                       FEMbasis = FEMbasis)  
 # Lattice method ---------------------------------------------------------------
-tmp = as.lattice.fdaPDE(mesh)
+tmp = as.lattice(mesh)
 nodes.lattice = tmp$nodes.lattice
 adj_matrix = tmp$adj_matrix
 T_matrix = makeTranMatrix(adj_matrix, M = 0.5)

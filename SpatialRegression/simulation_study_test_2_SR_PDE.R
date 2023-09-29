@@ -10,8 +10,6 @@ source("../utils.R")
 source("../settings.R")
 source("../plot.R")
 source("../Simulation.R")
-source("create_knots.R")
-source("rank_reduced_kriging.R")
 
 tests.names = c("test_1", "test_2", "test_3")
 ntest = 2
@@ -71,40 +69,27 @@ ND = compute_dist_matrix(points1= mesh$nodes,
                          L =spatstat.linnet)
 
 # aux_test is defined in settings.R
-if(ntest==1){
-  sample.idx =c(2378, 1271, 1802, 63)
-  field = aux_test_regression(ND,source = sample.idx[1], sigma=0.1)
-  field.2 = aux_test_regression(ND,source = sample.idx[2], sigma=0.125)
-  field.3 = aux_test_regression(ND,source = sample.idx[3], sigma=0.1)
-  field.4 = aux_test_regression(ND,source = sample.idx[4], sigma=0.25)
-  true_signal <- field + field.2 + field.3 + field.4 
-  plot(FEM(true_signal, FEMbasis), linewidth=0.75)  + scale_color_viridis()
+sample.idx = c(250, 1000, 950, 63)
+field = aux_test_regression(ND,source = sample.idx[1],sigma = 0.175)
+field.2 = aux_test_regression(ND,source = sample.idx[2],sigma = 0.175)
+field.3 = aux_test_regression(ND,source = sample.idx[3],sigma = 0.35)
+field.4 = aux_test_regression(ND,source = sample.idx[4],sigma = 0.35)
   
-  observations <- true_signal + rnorm(nnodes, mean=0, sd = 0.05*diff(range(true_signal)))
-}
-if(ntest==2){
-  # true spatial field
-  sample.idx = c(250, 1000, 950, 63)
-  field = aux_test_regression(ND,source = sample.idx[1],sigma = 0.175)
-  field.2 = aux_test_regression(ND,source = sample.idx[2],sigma = 0.175)
-  field.3 = aux_test_regression(ND,source = sample.idx[3],sigma = 0.35)
-  field.4 = aux_test_regression(ND,source = sample.idx[4],sigma = 0.35)
-  true_signal <- field + field.2 + field.3 + field.4 
-  plot(FEM(true_signal, FEMbasis), linewidth=0.75)  + scale_color_viridis()
+# true spatial field
+true_signal <- field + field.2 + field.3 + field.4 
+plot(FEM(true_signal, FEMbasis), linewidth=0.75)  + scale_color_viridis()
   
-  # covariates
-  X = matrix(nrow=nnodes, ncol=2)
-  X[,1] = rnorm(nnodes, mean=0.5,sd=0.25)
-  X[,2] = 1/4 * aux_test_regression_cov(ND, source=63, sigma=1.5)
-  plot(FEM(X[,2],FEMbasis), linewidth=0.75) + viridis::scale_color_viridis()
-  betas = c(1.,1.)
+# covariates
+X = matrix(nrow=nnodes, ncol=2)
+X[,1] = rnorm(nnodes, mean=0.5,sd=0.25)
+X[,2] = 1/4 * aux_test_regression_cov(ND, source=63, sigma=1.5)
+plot(FEM(X[,2],FEMbasis), linewidth=0.75) + viridis::scale_color_viridis()
+betas = c(1.,1.)
   
-  true_signal = field + X%*%betas # g(mu) = true_signal
+true_signal = field + X%*%betas # g(mu) = true_signal
   
-  mu<-inv.link(true_signal)
-  observations <- as.numeric(rpois(nnodes, lambda = mu))
-}
-
+mu<-inv.link(true_signal)
+observations <- as.numeric(rpois(nnodes, lambda = mu))
 
 # Building folders -------------------------------------------------------------
 date_ = gsub(":","_",gsub(" ","-",Sys.time()))

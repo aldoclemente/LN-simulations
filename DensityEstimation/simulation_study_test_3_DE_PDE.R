@@ -38,32 +38,13 @@ spatstat.linnet = sett$spatstat.linnet
 plot(mesh, linewidth=0.75)
 
 # Test Hyperparameters ---------------------------------------------------------
-
-if(ntest==1){
-  n_obs = as.integer(c(25, 50, 75, 100))
-  lambda = 10^seq(from=-5,to=0.,length.out=20)
-  n_sim = 30L
-  
-}
-if(ntest==2){
-  FAMILY="poisson"
-  
-  l<-make.link("log")
-  link<-l$linkfun
-  inv.link<-l$linkinv
-  n_obs = as.integer(c(100, 250, 500, 1000))
-  lambda = 10^seq(from=-5,to=0.,length.out=20)
-  n_sim=30L
-}
-if(ntest==3){
-  n_obs = as.interger(c(50, 100, 150, 250)) # numbers of occurences
-  lambda = 10^seq(from=-4, to=-3,length.out = 20)
-  sources = c(6,8)         
-  n_sim = 30L
-  # test locations
-  test_locs = runiflpp(1000, spatstat.linnet)
-  test_locs = cbind(test_locs$data$x, test_locs$data$y)
-}
+n_obs = as.interger(c(50, 100, 150, 250)) # numbers of occurences
+lambda = 10^seq(from=-4, to=-3,length.out = 20)
+sources = c(6,8)         
+n_sim = 30L
+# test locations
+test_locs = runiflpp(1000, spatstat.linnet)
+test_locs = cbind(test_locs$data$x, test_locs$data$y)
 set.seed(1234)
 
 # True Density Function --------------------------------------------------------
