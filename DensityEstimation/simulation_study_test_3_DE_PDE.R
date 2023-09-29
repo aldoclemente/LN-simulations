@@ -25,7 +25,7 @@ domains = c("estevan", "ontario",  "simplenet")
 # methods[5] -> VORONOI  (slow !)
 
 method_names = c("DE-PDE", "KDE-HEAT", "KDE-ES", "KDE-2D", "VORONOI")
-methods = c(T,T,F,T,F)
+methods = c(T,T,F,T,T)
 method_names = method_names[methods]
 
 # Fixing domain ----------------------------------------------------------------
@@ -51,15 +51,15 @@ if(ntest==2){
   l<-make.link("log")
   link<-l$linkfun
   inv.link<-l$linkinv
-  n_obs = c(100, 250, 500, 1000)
+  n_obs = as.integer(c(100, 250, 500, 1000))
   lambda = 10^seq(from=-5,to=0.,length.out=20)
   n_sim=30L
 }
 if(ntest==3){
-  n_obs = c(50, 100, 150, 250) # numbers of occurences
+  n_obs = as.interger(c(50, 100, 150, 250)) # numbers of occurences
   lambda = 10^seq(from=-4, to=-3,length.out = 20)
   sources = c(6,8)         
-  n_sim = 1L
+  n_sim = 30L
   # test locations
   test_locs = runiflpp(1000, spatstat.linnet)
   test_locs = cbind(test_locs$data$x, test_locs$data$y)
@@ -122,7 +122,7 @@ VORONOI <- DensityEstimationSimulation(method_name=method_names[4],
 for(j in 1:length(n_obs)){ 
   cat(paste("-------------------  n = ", n_obs[j], "  -------------------\n", sep="") ) 
   for(i in 1:n_sim){
-    cat(paste("-------------------  ", i, " / ", nsim,"  -------------------\n", sep="") )
+    cat(paste("-------------------  ", i, " / ", n_sim,"  -------------------\n", sep="") )
     PP = rlpp(n=n_obs[j], f = DENSITY)  
     data = cbind(PP$data$x, PP$data$y)
     
@@ -136,7 +136,6 @@ for(j in 1:length(n_obs)){
     
     DE_PDE$update_estimate(estimate=FEM(exp(output_CPP$g), FEMbasis),i,j)
     DE_PDE$update_error(true_density, test_locs=test_locs,i,j) 
-    DE_PDE$compute_mean_field(j)
 
     ### KDE-HEAT ### -----------------------------------------------------------
     start = Sys.time()
@@ -148,7 +147,6 @@ for(j in 1:length(n_obs)){
     coef_ <- as.linfun(output_KDE_HEAT/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
     KDE_HEAT$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
     KDE_HEAT$update_error(true_density, test_locs=test_locs,i,j) 
-    KDE_HEAT$compute_mean_field(j)
     
     cat(paste0("- KDE-HEAT DONE, time elapsed = ", 
                difftime(Sys.time(),start, units = "mins")," mins \n"))
@@ -163,7 +161,6 @@ for(j in 1:length(n_obs)){
     coef_ <- as.linfun(output_KDE_2D/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
     KDE_2D$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
     KDE_2D$update_error(true_density, test_locs=test_locs,i,j=j) 
-    KDE_2D$compute_mean_field(j)
     
     ### VORONOI--------------------------- -------------------------------------
     start = Sys.time()
@@ -175,7 +172,6 @@ for(j in 1:length(n_obs)){
     coef_ <- as.linfun(output_VORONOI/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
     VORONOI$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
     VORONOI$update_error(true_density, test_locs=test_locs,i,j=j)  
-    VORONOI$compute_mean_field(j)
     
   }
   DE_PDE$compute_mean_field(j)
@@ -184,15 +180,77 @@ for(j in 1:length(n_obs)){
   VORONOI$compute_mean_field(j)
 }                                     
 
-save(DE_PDE, KDE_HEAT, KDE_2D, VORONOI,
-     file = paste0(folder.name,date_,".RData"))
+save(DE_PDE, KDE_HEAT, KDE_2D, VORONOI, folder.name,
+     file = paste0(folder.name,"data",".RData"))
 
-SimulationBlock <- BlockSimulation(list(SR_PDE, GWR, Lattice, RR_Krig))
-SimulationBlock$method_names
-ORDER = c(1,3,2,4)
-boxplot(SimulationBlock, ORDER)
+# Post processing --------------------------------------------------------------
 
-SimulationBlock <- BlockSimulation(list(SR_PDE, GWR))
+DE_PDE$n_obs <- as.integer(n_obs)
+KDE_HEAT$n_obs <- as.integer(n_obs)
+KDE_2D$n_obs <- as.integer(n_obs)
+VORONOI$n_obs <- as.integer(n_obs)
+
+SimulationBlock <- BlockSimulation(list(DE_PDE, KDE_HEAT, KDE_2D, VORONOI))
 SimulationBlock$method_names
-ORDER = c(1,2)
-boxplot(SimulationBlock,ORDER)
+
+boxplot(SimulationBlock)
+
+title.size <- 26
+MyTheme <- theme(
+  axis.text = element_text(size=title.size-5),
+  axis.title = element_text(size=title.size),
+  title = element_text(size=title.size),
+  plot.title = element_text(hjust = 0.5),
+  legend.text = element_text(size=title.size-5),
+  legend.key.size = unit(1,"cm"),
+  legend.key.height = unit(1,"cm"),
+  legend.title = element_blank(),
+  legend.background = element_rect(fill="white", color="black",
+                                   linewidth =c(1,0.5))
+)
+
+pdf(paste0(folder.name,"test_3_RMSE.pdf"))
+ORDER = c(1,2,3,4)
+boxplot(SimulationBlock, ORDER=ORDER) + ylim(0,1) +
+  labs(title="RMSE", x="observations") +
+  theme(legend.position = c(0.90,0.825)) +
+  MyTheme
+dev.off()
+
+pdf(paste0(folder.name, "test_3_domain.pdf"))
+plot(mesh, linewidth=0.75)
+dev.off()
+
+folder.estimates <- paste0(folder.name,"estimates/") 
+if(!dir.exists(folder.estimates))
+  dir.create(folder.estimates)
+
+for(i in 1:SimulationBlock$num_methods){
+  for(j in 1:length(SimulationBlock$n_obs)){
+  pdf(paste0(folder.estimates,"test_3_estimated_field_", 
+             SimulationBlock$Simulations[[i]]$method_name,"_",
+             SimulationBlock$n_obs[j],".pdf"))
+  print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=0.75))
+  dev.off()
+  }
+}
+
+# setting same color scale
+color.min <- rep(1e5, times = length(SimulationBlock$n_obs))
+color.max <- rep(-1e5, times = length(SimulationBlock$n_obs))
+
+for(j in 1:length(SimulationBlock$n_obs)){
+  for(i in 1:SimulationBlock$num_methods){
+    color.min[j] <- min(min(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+                        color.min[j])
+    color.max[j] <- max(max(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+                        color.max[j])
+    }
+}
+cbind(color.min, color.max)
+
+DE_PDE$plot_mean_field(4L,linewidth=0.75) + viridis::scale_color_viridis(limits=c(color.min[4],color.max[4])) +
+  theme(legend.key.height = ggplot2::unit(3,units="cm"),
+        legend.key.width = ggplot2::unit(0.5,units="cm"),
+        legend.key.size = ggplot2::unit(3,units="cm"), title = element_blank()
+  ) 

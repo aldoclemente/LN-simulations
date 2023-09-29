@@ -23,10 +23,6 @@ library(viridis)
                                       update_estimate = function(estimate,i,j){
                                         estimates[[(((j-1)*n_sim+i))]] <<- estimate
                                       },
-                                      # update_error = function(true_field, test_locs, i, j){
-                                      #   estimated <- fdaPDE::eval.FEM(FEM=estimates[[(((j-1)*n_sim+i))]], locations = test_locs)
-                                      #   errors[(((j-1)*n_sim+i))] <<- mean( (true_field - estimated)^2)
-                                      # },
                                       plot_mean_field = function(j, ...){
                                         
                                         plot(meanField[[j]], ...) + scale_color_viridis()

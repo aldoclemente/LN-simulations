@@ -213,16 +213,12 @@ ORDER = c(1,3,2,4)
 pdf(paste0(folder.name,"test_1_RMSE.pdf"))
 boxplot(SimulationBlock, ORDER) +
 labs(title="RMSE", x="observations") +
-  theme(legend.position = c(0.90,0.90)) +
+  theme(legend.position = c(0.90,0.80)) +
   MyTheme
 dev.off()
 
 pdf(paste0(folder.name, "test_1_domain.pdf"))
-plot(mesh, linewidth=0.5)
-dev.off()
-
-pdf(paste0(folder.name, "test_1_domain.pdf"))
-plot(mesh, linewidth=0.5)
+plot(mesh, linewidth=0.75)
 dev.off()
 
 for(i in 1:length(n_obs)){
@@ -230,3 +226,10 @@ for(i in 1:length(n_obs)){
   print(SR_PDE$plot_mean_field(i,linewidth=0.75))
   dev.off()
 }
+
+
+SR_PDE$plot_mean_field(4L,linewidth=0.75) + 
+  theme(legend.key.height = ggplot2::unit(3,units="cm"),
+        legend.key.width = ggplot2::unit(0.5,units="cm"),
+        legend.key.size = ggplot2::unit(3,units="cm"), title = element_blank()
+        ) 
