@@ -17,12 +17,12 @@ ntest = 3
 # available domains
 domains = c("estevan", "ontario",  "simplenet") 
 
-# Competing methods (available in spatstat package) ----------------------------
+# Competing methods ------------------------------------------------------------
 # methods[1] -> DE-PDE
-# methods[2] -> KDE-PDE
-# methods[3] -> KDE-ES   (very slow !)
-# methods[4] -> KDE-2D
-# methods[5] -> VORONOI  (slow !)
+# methods[2] -> KDE-HEAT  (available in spatstat package))
+# methods[3] -> KDE-ES    (available in spatstat package, very slow !)
+# methods[4] -> KDE-2D    (available in spatstat package)
+# methods[5] -> VORONOI   (available in spatstat package, slow      !)
 
 method_names = c("DE-PDE", "KDE-HEAT", "KDE-ES", "KDE-2D", "VORONOI")
 methods = c(T,T,F,T,T)

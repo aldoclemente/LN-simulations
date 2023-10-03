@@ -130,7 +130,25 @@ setMethod("BlockCaseStudy",signature=c(x="list"),
           }
 )
 
-setMethod("boxplot", "BlockCaseStudyObject", function(x,...){
+setMethod("boxplot", "BlockCaseStudyObject", function(x, ORDER=NULL, ...){
+  
+  if(!is.null(ORDER)){
+    ORDER <- x$method_names[ORDER]
+    x$results$method <- factor(x$results$method, levels= ORDER)
+    
+    begin=0.25
+    end=0.95
+    border_col = darken(viridis(length(x$method_names), begin=begin,end=end), amount=0.25)
+    fill_col = viridis(length(x$method_names), begin=begin, end=end)
+    BORDER = c()
+    FILL = c()
+    for(i in 1:length(x$method_names)){
+      FILL = append(FILL, fill_col[i])
+      BORDER = append(BORDER, border_col[i])
+    }
+    ggFILL <-scale_fill_manual(values = FILL) 
+    ggBORDER <- scale_color_manual(values= BORDER) 
+  }
   
   # data
   p<-ggplot(x$results)+
@@ -142,5 +160,9 @@ setMethod("boxplot", "BlockCaseStudyObject", function(x,...){
     theme(
         axis.ticks.x = element_blank(),
         legend.position = "none")
+  
+  if(!is.null(ORDER)){
+    p <- p + ggFILL + ggBORDER
+  }
   p  
 })
