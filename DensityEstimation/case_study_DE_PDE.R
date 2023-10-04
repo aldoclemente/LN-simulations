@@ -154,7 +154,7 @@ SimulationBlock <- BlockCaseStudy(list(DE_PDE, KDE_HEAT, KDE_2D, VORONOI))
 
 title.size <- 26
 MyTheme <- theme(
-  axis.text = element_text(size=title.size-5),
+  axis.ticks = element_blank(),
   axis.title = element_text(size=title.size),
   title = element_text(size=title.size),
   plot.title = element_text(hjust = 0.5),
@@ -162,12 +162,12 @@ MyTheme <- theme(
   legend.key.size = unit(1,"cm"),
   legend.key.height = unit(1,"cm"),
   legend.title = element_blank(),
-  legend.background = element_rect(fill="white", color="black",
+  legend.background = element_rect(fill="white", color="white",
                                    linewidth =c(1,0.5))
 )
 SimulationBlock$method_names
 pdf(paste0(folder.name,"case_study_CV_error.pdf"))
-boxplot(SimulationBlock, ORDER=c(1,2)) + 
+boxplot(SimulationBlock, ORDER=c(1,2,3,4)) + 
   labs(title="CV error", x="observations") +
   MyTheme
 dev.off()
@@ -176,6 +176,31 @@ pdf(paste0(folder.name, "case_study_domain.pdf"))
 plot(mesh, linewidth=1)
 dev.off()
 
-pdf(paste0(folder.name, "case_study_estimate.pdf"))
-DE_PDE$plot_mean_field(1,linewidth=1)
-dev.off()
+folder.estimates <- paste0(folder.name,"estimates/") 
+if(!dir.exists(folder.estimates))
+  dir.create(folder.estimates)
+
+# setting same color scale
+color.min <- rep(1e5, times = length(SimulationBlock$n_obs))
+color.max <- rep(-1e5, times = length(SimulationBlock$n_obs))
+
+for(j in 1:length(SimulationBlock$n_obs)){
+  for(i in 1:SimulationBlock$num_methods){
+    color.min[j] <- min(min(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+                        color.min[j])
+    color.max[j] <- max(max(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+                        color.max[j])
+  }
+}
+colors <- cbind(color.min, color.max)
+
+for(i in 1:SimulationBlock$num_methods){
+  for(j in 1:length(SimulationBlock$n_obs)){
+    pdf(paste0(folder.estimates,"test_3_estimated_field_", 
+               SimulationBlock$Simulations[[i]]$method_name,"_",j,".pdf"))
+    print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=1.) +
+            viridis::scale_color_viridis(limits=c(colors[j,1],colors[j,2])) +  # option = "turbo"
+            labs(title=SimulationBlock$Simulations[[i]]$method_name) + MyTheme )
+    dev.off()
+  }
+}
