@@ -53,6 +53,22 @@ setMethod("as.mesh.1.5D", signature="linnet", function(x){
   return(mesh)
 })
 
+setMethod("as.mesh.1.5D", signature="sfnetwork", function(x){
+  adj_matrix <- igraph::as_adjacency_matrix(x)
+  nodes <- st_coordinates(x, "nodes")
+  
+  edges <- matrix(nrow=0,ncol=2)
+  for(i in 1:(nrow(adj_matrix)-1)){
+    for(j in (i+1):ncol(adj_matrix)){
+      
+      if(adj_matrix[i,j] == 1)
+        edges <- rbind(edges, c(i,j))
+    }
+  }
+  mesh <- create.mesh.1.5D(nodes,edges)
+  return(mesh)
+})
+
 # convertions from mesh.1.5D ---------------------------------------------------
 
 # Converts fdaPDE Linear Network mesh into lattice objects. 
