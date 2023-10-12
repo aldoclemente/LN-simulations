@@ -2,7 +2,12 @@ graphics.off()
 rm(list=ls())
 
 # Density Estimation over Linear Networks --------------------------------------
-setwd("DensityEstimation/")
+
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load("rstudioapi")
+
+# setting working directory 
+setwd(dirname(getActiveDocumentContext()$path))
 
 # loading packages and auxiliary functions
 source("../packages.R")

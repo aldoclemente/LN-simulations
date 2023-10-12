@@ -1,6 +1,11 @@
+
 # London House Pricing Case Study  ---------------------------------------------
 
-setwd("SpatialRegression/")
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load("rstudioapi")
+
+# setting working directory 
+setwd(dirname(getActiveDocumentContext()$path))
 
 # loading packages and auxiliary functions
 source("../packages.R")
