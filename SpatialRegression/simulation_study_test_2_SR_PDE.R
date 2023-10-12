@@ -11,10 +11,11 @@ setwd(dirname(getActiveDocumentContext()$path))
 
 # loading packages and auxiliary functions
 source("../packages.R")
-source("../utils.R")
 source("../settings.R")
-source("../plot.R")
-source("../Simulation.R")
+source("../utils/utils.R")
+source("../utils/plot.R")
+source("../utils/Simulation.R")
+source("../utils/CaseStudy.R")
 
 tests.names = c("test_1", "test_2", "test_3")
 ntest = 2

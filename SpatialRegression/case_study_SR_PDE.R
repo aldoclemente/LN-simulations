@@ -9,11 +9,11 @@ setwd(dirname(getActiveDocumentContext()$path))
 
 # loading packages and auxiliary functions
 source("../packages.R")
-source("../utils.R")
 source("../settings.R")
-source("../plot.R")
-source("../Simulation.R")
-source("../CaseStudy.R")
+source("../utils/utils.R")
+source("../utils/plot.R")
+source("../utils/Simulation.R")
+source("../utils/CaseStudy.R")
 
 data(LNNT) # LN.nt   # SpatialLinesDataFrame <- linear network
 data(LNHP) # LN.prop # data

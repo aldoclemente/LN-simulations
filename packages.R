@@ -4,7 +4,7 @@ if(!require(diffusionMaps)){
         run from terminal: R CMD INSTALL diffusionMaps_2.0.0.tar.gz")
 }
 
-if(system.file(package = "KrigLinCaution")==""){
+if(!require(KrigLinCaution)){
   devtools::install_github("jayverhoef/KrigLinCaution")
 }
 

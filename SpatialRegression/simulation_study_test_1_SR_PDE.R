@@ -11,10 +11,11 @@ setwd(dirname(getActiveDocumentContext()$path))
 
 # loading packages and auxiliary functions
 source("../packages.R")
-source("../utils.R")
 source("../settings.R")
-source("../plot.R")
-source("../Simulation.R")
+source("../utils/utils.R")
+source("../utils/plot.R")
+source("../utils/Simulation.R")
+source("../utils/CaseStudy.R")
 source("create_knots.R")
 source("rank_reduced_kriging.R")
 
