@@ -95,7 +95,7 @@ as.linnet.mesh.1.5D <- function(X,...){
                  y = X$nodes[,2], 
                  window = owin(xrange = c(min(X$nodes[,1]),max(X$nodes[,1])),
                                yrange = c(min(X$nodes[,2]),max(X$nodes[,2]))))
-  spat.stat.linnet = linnet(vertices = vertices, edges = X$edges)
+  spat.stat.linnet = linnet(vertices = vertices, edges = X$edges, sparse = T)
   
   return(spat.stat.linnet)
 }

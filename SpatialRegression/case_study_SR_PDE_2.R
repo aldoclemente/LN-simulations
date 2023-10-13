@@ -43,6 +43,7 @@ FEMbasis <- create.FEM.basis(mesh)
 # data 
 data(LNHP)
 data <- st_as_sf(LN.prop)
+data <- unique(data)
 # setting the coordinate reference system
 st_crs(data) = 27700
 
@@ -53,17 +54,11 @@ locs <- st_coordinates(data)
 data$X <- locs[,1]
 data$Y <- locs[,2]
 
-data <- unique(data)
+linnet <- as.linnet(mesh)
+LPP = lpp(locs, linnet)
 
-locs_sf <- list()
-for(i in 1:nrow(data)){
-  locs_sf[[i]] <- st_sfc(st_point(locs[i,]))
-  st_crs(locs_sf[[i]]) <- st_crs(sfnetwork)
-}
-
-# network distance matrix
-ND <- st_network_cost(sfnetwork, from=unlist(locs_sf), to=unlist(locs_sf),
-                      algorithm = "bellman-ford")
+# Network distance matrix
+ND <- pairdist.lpp(LPP) 
 
 # data analysis ----------------------------------------------------------------
 
