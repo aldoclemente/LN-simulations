@@ -1,6 +1,5 @@
-library(ggplot2)
-library(ggforce)
-library(viridis)
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load("ggplot2", "ggforce", "viridis")
 
 # performing n_sim time length(n_obs) simulations!!
 .SimulationObjectCtr <- setRefClass("SimulationObject", 

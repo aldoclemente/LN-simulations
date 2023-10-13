@@ -1,3 +1,5 @@
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load("ggplot2", "ggforce", "viridis")
 
 .KfoldsCrossValidationCtr <- setRefClass("KfoldsCrossValidationObject",
                                          fields = c(K="integer",       # number of folds
