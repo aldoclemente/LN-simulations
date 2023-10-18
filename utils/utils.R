@@ -3,36 +3,36 @@
 setGeneric("as.SpatialLinesDataFrame", function(x) standardGeneric("as.SpatialLinesDataFrame"))
 
 # as.SpatialLinesDataFrame function overloaded for mesh.1.5D class.
-as.SpatialLinesDataFrame.mesh.1.5D <- function(x){
-  nodes = mesh$nodes
-  edges = mesh$edges
-  
-  x0 = vector(mode="numeric",length=nrow(edges))
-  y0 = x0
-  x1 = x0
-  y1 = x0
-  
-  for(e in 1:nrow(edges)){
-    x0[e] = nodes[edges[e,1],1]
-    y0[e] = nodes[edges[e,1],2]
-    x1[e] = nodes[edges[e,2],1]
-    y1[e] = nodes[edges[e,2],2]
-  }
-  
-  psp_ =psp(x0,y0,x1,y1, window=owin(xrange=c(min(x0,x1),max(x0,x1)), 
-                                     yrange=c(min(y0,y1),max(y0,y1))) ) 
-  # maptools 
-  SpatialLines_ = as.SpatialLines.psp(psp_)
-  
-  # rgeos
-  df <- data.frame(len = sapply(1:length(SpatialLines_), function(i) gLength(SpatialLines_[i, ])))
-  rownames(df) <- sapply(1:length(SpatialLines_), function(i) SpatialLines_@lines[[i]]@ID)
-  
-  # object to return
-  SpatialLinesDf <- SpatialLinesDataFrame(SpatialLines_, data = df)
-  
-  return(SpatialLinesDf)
-}
+# as.SpatialLinesDataFrame.mesh.1.5D <- function(x){
+#   nodes = mesh$nodes
+#   edges = mesh$edges
+#   
+#   x0 = vector(mode="numeric",length=nrow(edges))
+#   y0 = x0
+#   x1 = x0
+#   y1 = x0
+#   
+#   for(e in 1:nrow(edges)){
+#     x0[e] = nodes[edges[e,1],1]
+#     y0[e] = nodes[edges[e,1],2]
+#     x1[e] = nodes[edges[e,2],1]
+#     y1[e] = nodes[edges[e,2],2]
+#   }
+#   
+#   psp_ =psp(x0,y0,x1,y1, window=owin(xrange=c(min(x0,x1),max(x0,x1)), 
+#                                      yrange=c(min(y0,y1),max(y0,y1))) ) 
+#   # maptools 
+#   SpatialLines_ = as.SpatialLines.psp(psp_)
+#   
+#   # rgeos
+#   df <- data.frame(len = sapply(1:length(SpatialLines_), function(i) gLength(SpatialLines_[i, ])))
+#   rownames(df) <- sapply(1:length(SpatialLines_), function(i) SpatialLines_@lines[[i]]@ID)
+#   
+#   # object to return
+#   SpatialLinesDf <- SpatialLinesDataFrame(SpatialLines_, data = df)
+#   
+#   return(SpatialLinesDf)
+# }
 
 # Convertions to mesh.1.5D -----------------------------------------------------
 

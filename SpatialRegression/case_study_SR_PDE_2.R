@@ -1,7 +1,8 @@
 # London House Pricing ---------------------------------------------------------
 
 if(!require(pacman)) install.packages("pacman")
-pacman::p_load("rstudioapi", "shp2graph", "sfnetworks", "tidygraph", "GWmodel")
+pacman::p_load("rstudioapi", "shp2graph", "sfnetworks", "tidygraph", "GWmodel", 
+               "fdaPDE", "spatstat")
 
 # setting working directory 
 setwd(dirname(getActiveDocumentContext()$path))
@@ -51,6 +52,8 @@ st_crs(data) = 27700
 data <- st_transform(data, 4326)
 
 locs <- st_coordinates(data)
+
+locs <- projection.points.1.5D(mesh, locs)
 data$X <- locs[,1]
 data$Y <- locs[,2]
 
@@ -64,6 +67,7 @@ ND <- pairdist.lpp(LPP)
 
 data$DATA.IDX = 1:nrow(data)
 data$response = log(data$PURCHASE) 
+data <- as.data.frame(data)
 
 # Building folders -------------------------------------------------------------
 date_ = gsub(":","_",gsub(" ","-",Sys.time()))
@@ -85,7 +89,7 @@ if(!dir.exists(folder.name)) {
 K <- 10L
 KfoldObj <- KfoldsCrossValidation(data, seed=3145L, K=K)
 # SR-PDE -----------------------------------------------------------------------
-SR_PDE <- SpatialRegressionCaseStudy(method_name="SR_PDE", 
+SR_PDE <- SpatialRegressionCaseStudy(method_name="SR-PDE", 
                                      n_obs=KfoldObj$num_obs_kFold,
                                      FEMbasis = FEMbasis)
 # GWR -- -----------------------------------------------------------------------
@@ -171,7 +175,10 @@ MyTheme <- theme(
   legend.background = element_rect(fill="white", color="black",
                                    linewidth =c(1,0.5))
 )
-SimulationBlock$method_names
+# SimulationBlock$method_names <- c("SR-PDE", "GWR")
+# SimulationBlock$Simulations[[1]]$method_name <- "SR-PDE"
+# 
+# SimulationBlock$method_names
 pdf(paste0(folder.name,"case_study_CV_error.pdf"))
 boxplot(SimulationBlock, ORDER=c(1,2)) + 
   labs(title="CV error", x="observations") +

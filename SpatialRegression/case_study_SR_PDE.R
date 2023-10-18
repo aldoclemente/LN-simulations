@@ -18,7 +18,7 @@ source("../utils/CaseStudy.R")
 data(LNNT) # LN.nt   # SpatialLinesDataFrame <- linear network
 data(LNHP) # LN.prop # data
 
-spat.stat.linnet = maptools::as.linnet.SpatialLines(LN.nt)
+#spat.stat.linnet = maptools::as.linnet.SpatialLines(LN.nt)
 
 x.min = min(spat.stat.linnet$vertices$x)
 y.min = min(spat.stat.linnet$vertices$y)
