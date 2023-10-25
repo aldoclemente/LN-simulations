@@ -259,3 +259,16 @@ dev.off()
 pdf(paste0(folder.name, "case_study_estimate.pdf"))
 SR_PDE$plot_mean_field(1,linewidth=0.25)
 dev.off()
+
+library(plotrix)
+png(paste0(folder.name,"legend.png"), bg = "transparent", width=1100, height=300, family = "serif")
+#x11(width=11,height=3)
+par(mai=c(1,0.75,0,0))
+plot(c(0, 112.5), c(0, 30), type= "n", 
+     xlab = "", ylab = "", xaxt = 'n', yaxt = 'n', 
+     frame.plot = F, bg='transparent')
+gradient.rect(0, 0, 100, 5, col = viridis(1000), border = NA)
+axis(1,at=c(0, 200/(675-40)*100,400/(675-40)*100,600/(675-40)*100, 100), 
+     labels=c('','200', '400', '600', ''), lwd.ticks = 0, cex.axis=4, lwd=0)
+dev.off()
+
