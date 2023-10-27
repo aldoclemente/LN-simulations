@@ -66,8 +66,7 @@ ND <- pairdist.lpp(LPP)
 # data analysis ----------------------------------------------------------------
 
 data$DATA.IDX = 1:nrow(data)
-data$response = log(data$PURCHASE) 
-data <- as.data.frame(data)
+data$response = log(data$PURCHASE) #data$PURCHASE/10^3 
 
 # Building folders -------------------------------------------------------------
 date_ = gsub(":","_",gsub(" ","-",Sys.time()))
@@ -93,7 +92,7 @@ library(leaflet.providers)
 map.type <- "Esri.WorldTopoMap" # Esri.WorldGrayCanvas "Stadia.AlidadeSmooth" bella ma
 map_1 <- mapview(st_as_sf(sfnetwork, "edges"), color="black", alpha=0.7, lwd=0.45,
                  layer.name="road-network", map.type=map.type)
-map_2 <- mapview(data, zcol="PURCHASE", legend=F, alpha=1, cex=3, 
+map_2 <- mapview(st_as_sf(data, crs=4326), zcol="response", legend=F, alpha=1, cex=3, 
                  layer.name="data", map.type=map.type)
 map <- map_1 + map_2
 map
@@ -152,7 +151,9 @@ html_fl = paste0(folder.name, "case-study-map_zoom.html")
 png_fl = paste0(folder.name, "case-study-map_zoom.png")
 
 mapshot2(map1, url = html_fl, file = png_fl, delay=10, cliprect = c(190,135, 600,500), zoom=1.5  )#"viewport")
+
 # 10-folds Cross Validation ---------------------------------------------------- 
+data <- as.data.frame(data)
 K <- 10L
 KfoldObj <- KfoldsCrossValidation(data, seed=3145L, K=K)
 # SR-PDE -----------------------------------------------------------------------
@@ -248,7 +249,7 @@ MyTheme <- theme(
 # SimulationBlock$method_names
 pdf(paste0(folder.name,"case_study_CV_error.pdf"))
 boxplot(SimulationBlock, ORDER=c(1,2)) + 
-  labs(title="CV error", x="observations") +
+  labs(title="CV error", x="") +
   MyTheme
 dev.off()
 
@@ -269,6 +270,39 @@ plot(c(0, 112.5), c(0, 30), type= "n",
      frame.plot = F, bg='transparent')
 gradient.rect(0, 0, 100, 5, col = viridis(1000), border = NA)
 axis(1,at=c(0, 200/(675-40)*100,400/(675-40)*100,600/(675-40)*100, 100), 
-     labels=c('','200', '400', '600', ''), lwd.ticks = 0, cex.axis=4, lwd=0)
+     labels=c('','5.3', '6', '6.4', ''), lwd.ticks = 0, cex.axis=4, lwd=0)
 dev.off()
 
+# ------------------------------------------------------------------------------
+
+tmp <- as_Spatial(st_as_sf(sfnetwork, "edges"))
+
+num_edges = nrow(tmp)
+FEM <- SR_PDE$estimates[[1]]
+coeff <- matrix(nrow=num_edges, ncol=1)
+for(e in 1:num_edges){
+  coeff[e]= (FEM$coeff[mesh$edges[e,1]] + FEM$coeff[mesh$edges[e,2]])/2  
+}
+
+
+tmp <-  st_as_sf(tmp) %>% mutate(coeff = as.vector(coeff)) 
+
+
+map.type <- "Esri.WorldTopoMap" # Esri.WorldGrayCanvas "Stadia.AlidadeSmooth" bella ma
+map <- mapview(tmp, zcol="coeff", alpha=0.7, lwd=0.45,
+                  layer.name="road-network", map.type = map.type, legend=F)
+ 
+cntr_crds <- c(mean(coordinates(nodes)[, 1]),
+               mean(coordinates(nodes)[, 2]))
+
+nodes <- sfnetwork %>%
+  activate("nodes") %>%
+  st_as_sf()
+nodes <- as_Spatial(nodes)
+
+map@map <- map@map %>% setView(cntr_crds[1], cntr_crds[2], zoom = 10) 
+
+html_fl = paste0(folder.name, "case-study-map_estimate.html")
+png_fl = paste0(folder.name, "case-study-map_estimate.png")
+
+mapshot2(map, url = html_fl, file = png_fl, delay=10, cliprect = c(190,135, 600,500), zoom=1.5  )

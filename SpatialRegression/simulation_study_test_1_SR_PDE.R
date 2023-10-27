@@ -227,7 +227,7 @@ MyTheme <- theme(
 )
 SimulationBlock$method_names
 ORDER = c(1,3,2,4)
-pdf(paste0(folder.name,"test_1_RMSE.pdf"))
+pdf(paste0(folder.name,"test_1_RMSE.pdf"),width = 12)
 boxplot(SimulationBlock, ORDER) +
 labs(title="RMSE", x="observations") +
   theme(legend.position = c(0.90,0.80)) +

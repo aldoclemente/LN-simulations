@@ -176,7 +176,7 @@ setMethod("boxplot", "BlockSimulation", function(x, ORDER=NULL ,...){
     geom_boxplot(aes(x=n_obs,
                      y=errors, group=interaction(method,n_obs),
                      fill=method, color = method))+
-    scale_x_discrete(limits=as.character(n_obs))+
+    scale_x_discrete(limits=as.character(x$n_obs))+
     labs(x="", y="") +
     theme(
       axis.ticks.x = element_blank(),

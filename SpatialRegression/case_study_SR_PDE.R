@@ -172,7 +172,7 @@ MyTheme <- theme(
 SimulationBlock$method_names
 pdf(paste0(folder.name,"case_study_CV_error.pdf"))
 boxplot(SimulationBlock, ORDER=c(1,2)) + 
-  labs(title="CV error", x="observations") +
+  labs(title="CV error", x="") +
   MyTheme
 dev.off()
 

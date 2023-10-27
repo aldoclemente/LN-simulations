@@ -171,7 +171,7 @@ MyTheme <- theme(
                                    linewidth =c(1,0.5))
 )
 SimulationBlock$method_names
-pdf(paste0(folder.name,"case_study_CV_error.pdf"))
+pdf(paste0(folder.name,"case_study_CV_error.pdf"), width = 7)
 boxplot(SimulationBlock, ORDER=c(1,2,3,4)) + 
   labs(title="CV error", x="observations") +
   MyTheme
@@ -179,6 +179,16 @@ dev.off()
 
 pdf(paste0(folder.name, "case_study_domain.pdf"))
 plot(mesh, linewidth=1)
+dev.off()
+
+pdf(paste0(folder.name, "case_study_domain_obs.pdf"))
+plot(mesh, linewidth=1) + geom_point(data=data.frame(x=x.norm,y=y.norm),
+                                     aes(x=x, y=y), color="red3", size=3)
+dev.off()
+
+png(paste0(folder.name, "case_study_domain_obs.png"), bg="transparent")
+plot(mesh, linewidth=1) + geom_point(data=data.frame(x=x.norm,y=y.norm),
+                                     aes(x=x, y=y), color="red3", size=3)
 dev.off()
 
 folder.estimates <- paste0(folder.name,"estimates/") 
@@ -209,3 +219,34 @@ for(i in 1:SimulationBlock$num_methods){
     dev.off()
   }
 }
+
+# Chicago map 
+library(mapview)
+library(leaflet)
+library(leaflet.providers)
+
+its_bbox = st_bbox(c(xmin = -87.608582 , ymin = 41.785805 , 
+                     xmax = -87.5745 , ymax = 41.81), crs = 4326) %>% 
+  st_as_sfc()
+
+map.type <- "Esri.WorldTopoMap" # Esri.WorldGrayCanvas "Stadia.AlidadeSmooth" bella ma
+map <- mapview(st_as_sf(its_bbox), color="black", alpha=0.7, lwd=0.45,
+               layer.name="road-network", map.type=map.type)
+map
+
+rect_coords <- data.frame(lng1 =-87.608582 , lat1= 41.785805 , 
+                          lng2=-87.5745, lat2=41.81)
+
+
+map@map <- map@map %>% fitBounds(lng1= (rect_coords$lng1),
+                                 lat1= (rect_coords$lat1),
+                                 lng2= (rect_coords$lng2),
+                                 lat2= (rect_coords$lat2)) %>% hideGroup("road-network")
+
+map
+
+html_fl = paste0(folder.name, "case-study-map.html")
+png_fl = paste0(folder.name, "case-study-map.png")
+
+mapshot2(map, url = html_fl, file = png_fl, 
+         cliprect = c(260,140, 450,450), zoom=2)#"viewport")

@@ -44,7 +44,7 @@ spatstat.linnet = sett$spatstat.linnet
 plot(mesh, linewidth=0.75)
 
 # Test Hyperparameters ---------------------------------------------------------
-n_obs = as.interger(c(50, 100, 150, 250)) # numbers of occurences
+n_obs = as.integer(c(50, 100, 150, 250)) # numbers of occurences
 lambda = 10^seq(from=-4, to=-3,length.out = 20)
 sources = c(6,8)         
 n_sim = 30L
@@ -87,7 +87,14 @@ if(!dir.exists(folder.name)) {
   dir.create(folder.name)
 }
 
-# Performing simulation ----------------------------------------------------
+# point pattern plot -----------------------------------------------------------
+PP = rlpp(n=n_obs[2], f = DENSITY)  
+pdf(paste0(folder.name, "test_3_point_pattern.pdf"))
+plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+                             aes(x=x, y=y), color="red3", size=3)
+dev.off()
+
+# Performing simulation --------------------------------------------------------
 
 # DE-PDE -----------------------------------------------------------------------
 DE_PDE <- DensityEstimationSimulation(method_name=method_names[1],
@@ -172,10 +179,10 @@ save(DE_PDE, KDE_HEAT, KDE_2D, VORONOI, folder.name,
 
 # Post processing --------------------------------------------------------------
 
-DE_PDE$n_obs <- as.integer(n_obs)
-KDE_HEAT$n_obs <- as.integer(n_obs)
-KDE_2D$n_obs <- as.integer(n_obs)
-VORONOI$n_obs <- as.integer(n_obs)
+DE_PDE$n_obs <- as.integer(DE_PDE$n_obs)
+KDE_HEAT$n_obs <- as.integer(DE_PDE$n_obs)
+KDE_2D$n_obs <- as.integer(DE_PDE$n_obs)
+VORONOI$n_obs <- as.integer(DE_PDE$n_obs)
 
 SimulationBlock <- BlockSimulation(list(DE_PDE, KDE_HEAT, KDE_2D, VORONOI))
 SimulationBlock$method_names
@@ -196,7 +203,7 @@ MyTheme <- theme(
                                    linewidth =c(1,0.5))
 )
 
-pdf(paste0(folder.name,"test_3_RMSE.pdf"))
+pdf(paste0(folder.name,"test_3_RMSE.pdf"), width = 12)
 ORDER = c(1,2,3,4)
 boxplot(SimulationBlock, ORDER=ORDER) + ylim(0,1) +
   labs(title="RMSE", x="observations") +
@@ -205,7 +212,7 @@ boxplot(SimulationBlock, ORDER=ORDER) + ylim(0,1) +
 dev.off()
 
 pdf(paste0(folder.name, "test_3_domain.pdf"))
-plot(mesh, linewidth=0.75)
+plot(DE_PDE$FEMbasis$mesh, linewidth=0.75)
 dev.off()
 
 folder.estimates <- paste0(folder.name,"estimates/") 
