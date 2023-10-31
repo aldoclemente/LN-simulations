@@ -12,7 +12,6 @@ if(!require(diffusionMaps, quietly = TRUE)){
   system("R CMD INSTALL diffusionMaps/diffusionMaps_2.0.0.tar.gz")
   
   unlink("diffusionMaps/", recursive=TRUE)
-  unlink("../diffusionMaps/", recursive=TRUE)
   cat("\ndiffusionMaps R package installed.\n")
 }
 
