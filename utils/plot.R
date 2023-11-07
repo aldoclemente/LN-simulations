@@ -1,5 +1,5 @@
 if(!require(pacman)) install.packages("pacman")
-pacman::p_load("ggplot2", "ggforce", "viridis")
+pacman::p_load("ggplot2", "ggforce", "viridis", "plotrix")
 
 # Overload plot function for class mesh.1.5D
 plot.mesh.1.5D <- function(x, ...){

@@ -221,9 +221,7 @@ for(i in 1:SimulationBlock$num_methods){
 }
 
 # Chicago map 
-library(mapview)
-library(leaflet)
-library(leaflet.providers)
+pacman::p_load("leaflet", "leaflet.providers", "mapview", "webshot2")
 
 its_bbox = st_bbox(c(xmin = -87.608582 , ymin = 41.785805 , 
                      xmax = -87.5745 , ymax = 41.81), crs = 4326) %>% 

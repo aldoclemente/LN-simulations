@@ -2,7 +2,7 @@
 
 if(!require(pacman)) install.packages("pacman")
 pacman::p_load("rstudioapi", "shp2graph", "sfnetworks", "tidygraph", "GWmodel", 
-               "fdaPDE", "spatstat")
+               "fdaPDE", "spatstat", "sf")
 
 # setting working directory 
 setwd(dirname(getActiveDocumentContext()$path))
@@ -66,7 +66,7 @@ ND <- pairdist.lpp(LPP)
 # data analysis ----------------------------------------------------------------
 
 data$DATA.IDX = 1:nrow(data)
-data$response = log(data$PURCHASE) #data$PURCHASE/10^3 
+data$response = log(data$PURCHASE)  
 
 # Building folders -------------------------------------------------------------
 date_ = gsub(":","_",gsub(" ","-",Sys.time()))
@@ -85,9 +85,7 @@ if(!dir.exists(folder.name)) {
 }
 
 # plot -------------------------------------------------------------------------
-library(mapview)
-library(leaflet)
-library(leaflet.providers)
+pacman::p_load("leaflet", "leaflet.providers", "mapview", "webshot2")
 
 map.type <- "Esri.WorldTopoMap" # Esri.WorldGrayCanvas "Stadia.AlidadeSmooth" bella ma
 map_1 <- mapview(st_as_sf(sfnetwork, "edges"), color="black", alpha=0.7, lwd=0.45,
