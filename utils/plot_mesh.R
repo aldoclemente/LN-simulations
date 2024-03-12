@@ -85,3 +85,77 @@ plot(mesh, linewidth = linewidth, color="gray50") +
            label = "...",
            size=7, angle=135)  
 dev.off()
+
+# ------------------------------------------------------------------------------
+linewidth = 3
+source("plot.R")
+
+x = c(0., 0.5, 1)
+y = c(0., 0, 0)
+vertices = cbind(x, y)
+edges = matrix(c(1,2,2,3), nrow=2,ncol=2, byrow=T)
+mesh = create.mesh.1.5D(nodes=vertices, edges = edges)
+
+pdf("network_neuman_kirchoff2.pdf")
+
+plot(mesh, linewidth = linewidth, color="gray50") + 
+  geom_segment(x=0, y=0, xend=0.25, yend=0,
+               lineend = "round", # See available arrow types in example above
+               linejoin = "round",
+                arrow = arrow(length = unit(0.3, "inches")),
+                size=2, colour = "gray50")+
+  geom_point(data = data.frame(x = mesh$nodes[1,1],
+                               y = mesh$nodes[1,2]),
+             aes(x = x, y = y), color = "black", size = 5)
+
+plot(mesh, linewidth = linewidth, color="gray50") + 
+  geom_segment(x=0.5, y=0, xend=0.75, yend=0,
+               lineend = "round", # See available arrow types in example above
+               linejoin = "round",
+               arrow = arrow(length = unit(0.3, "inches")),
+               size=2, colour = "gray50")+
+  geom_segment(x=0.5, y=0, xend=0.25, yend=0,
+               lineend = "round", # See available arrow types in example above
+               linejoin = "round",
+               arrow = arrow(length = unit(0.3, "inches")),
+               size=2, colour = "gray50")+
+  geom_point(data = data.frame(x = mesh$nodes[2,1],
+                               y = mesh$nodes[2,2]),
+             aes(x = x, y = y), color = "black", size = 5)
+
+x = c(0., 0.5, 0.5+0.5*sqrt(2)/2, 0.5+0.5*sqrt(2)/2)
+y = c(0., 0, 0.5*sqrt(2)/2, -0.5*sqrt(2)/2)
+vertices = cbind(x, y)
+edges = matrix(c(1,2,2,3,2,4), nrow=3,ncol=2, byrow=T)
+
+mesh = create.mesh.1.5D(vertices, edges, order = 1)
+nnodes <- nrow(mesh$nodes)
+
+mesh <- refine.by.splitting.mesh.1.5D(refine.by.splitting.mesh.1.5D(mesh))
+vertices <- mesh$nodes
+
+plot(mesh, linewidth = linewidth, color="gray50") +
+  geom_segment(x=vertices[2,1], y=vertices[2,2], 
+               xend=vertices[6,1], yend=vertices[6,2],
+               lineend = "round", # See available arrow types in example above
+               linejoin = "round",
+               arrow = arrow(length = unit(0.3, "inches")),
+               size=2, colour = "gray50") +
+geom_segment(x=vertices[2,1], y=vertices[2,2], 
+             xend=vertices[5,1], yend=vertices[5,2],
+             lineend = "round", # See available arrow types in example above
+             linejoin = "round",
+             arrow = arrow(length = unit(0.3, "inches")),
+             size=2, colour = "gray50") +
+geom_segment(x=vertices[2,1], y=vertices[2,2], 
+             xend=vertices[7,1], yend=vertices[7,2],
+             lineend = "round", # See available arrow types in example above
+             linejoin = "round",
+             arrow = arrow(length = unit(0.3, "inches")),
+             size=2, colour = "gray50") +
+geom_point(data = data.frame(x = mesh$nodes[2,1],
+                               y = mesh$nodes[2,2]),
+             aes(x = x, y = y), color = "black", size = 5)
+
+dev.off()
+
