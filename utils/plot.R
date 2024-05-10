@@ -1,5 +1,5 @@
 if(!require(pacman)) install.packages("pacman")
-pacman::p_load("ggplot2", "ggforce", "viridis", "plotrix")
+pacman::p_load("ggplot2", "ggforce", "viridis", "plotrix", "latex2exp")
 
 # Overload plot function for class mesh.1.5D
 plot.mesh.1.5D <- function(x, ...){
@@ -54,4 +54,49 @@ plot.FEM <-function(x, ...){
     coord_fixed(ratio=1) + 
     theme(legend.key.width = unit(0.05,"cm"),
           legend.key.height = unit(2, "cm"))+ theme_void() 
+}
+
+plot.colorbar <- function(x, limits= NULL, colorscale = jet.col, 
+                          horizontal = FALSE, cex.axis = 2,
+                          file = "plot.pdf"){
+  
+  mesh <- x$FEMbasis$mesh
+  
+  coeff <- apply(mesh$edges, MARGIN=1, FUN = function(edge){
+    mean(x$coeff[edge,])
+  })
+  
+  if(is.null(limits)) limits = c(min(coeff, na.rm = T), max(coeff, na.rm = T))
+  cmin = limits[1]; cmax=limits[2]
+  
+  exps <- -15:15
+  range_ <- round( diff(range(limits)), digits = 2)
+  cmin_exp <- which(floor(log10(abs(signif(signif(cmin, digits = 2) / 10^exps, digits = 0))))==0)
+  cmax_exp <- which(floor(log10(abs(signif(signif(cmax, digits = 2) / 10^exps, digits = 0))))==0)
+  k <- exps[max(cmin_exp, cmax_exp)]
+  
+  at = seq(0, 100, length.out=5)
+  labels = as.character(round(seq(cmin*10^(-k), cmax*10^(-k), length.out=5), 2))
+  text_ <- ifelse(k != 0, paste0("$\\times 10^{", k,"}$"), " ")
+  
+  #x11(width = 11, height = 3)
+  pdf(paste0(file, "_horiziontal.pdf"), family = "serif", width = 11, height = 3)
+  par(mai = c(1,0.75,0,0))
+  plot(c(0, 112.5), c(0, 15), type = "n", xlab = "", ylab = "", xaxt = "n", yaxt = "n", frame.plot = F)
+  gradient.rect(0, 0, 100, 5, col = colorscale(1000), border = "black")
+  axis(1, at = at, labels = labels, # at = c(0,33.33,66.66,100)
+       cex.axis = cex.axis, lwd.ticks = 0, lwd = 0) # lwd.ticks = 2, 
+  text(107,2, TeX(text_), cex = 2)
+  dev.off()
+  
+  pdf(paste0(file, "_vertical.pdf"), family = "serif", width = 3, height = 11)
+  #x11(width = 3, height = 11)
+  par(mai = c(1,0.75,0,0))
+  plot(c(0, 15), c(0, 112.5), type = "n", xlab = "", ylab = "", xaxt = "n", yaxt = "n", frame.plot = F)
+  gradient.rect(0, 0, 5, 100, col = colorscale(1000), border = "black", gradient = "y")
+  axis(4, at = at, labels = labels, # at = c(0,33.33,66.66,100)
+       cex.axis = cex.axis, lwd.ticks = 0, lwd = 0,  line=-7.5) # lwd.ticks = 2, 
+  text(2.5, 107, TeX(text_), cex = 2)
+  dev.off()
+  
 }

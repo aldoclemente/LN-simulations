@@ -251,6 +251,24 @@ boxplot(SimulationBlock, ORDER=c(1,2)) +
   MyTheme
 dev.off()
 
+head(SimulationBlock$results)
+col_names <- names(summary(c(1)))
+rmse_table <- matrix(0, nrow=SimulationBlock$num_methods, 
+                     ncol=length(col_names))
+
+for(j in 1:length(SimulationBlock$method_names)){
+  rmse_table_method <- SimulationBlock$results[SimulationBlock$results$method == SimulationBlock$method_names[j],1]
+  
+  rmse_table[j,] = summary(rmse_table_method)
+}
+
+colnames(rmse_table) <- col_names
+rownames(rmse_table) <- SimulationBlock$method_names
+
+write.table(format(rmse_table, digits=4), 
+            file=paste0(folder.name,"case_study_CV_error.txt"))
+
+
 pdf(paste0(folder.name, "case_study_domain.pdf"))
 plot(mesh, linewidth=0.25)
 dev.off()
