@@ -33,9 +33,11 @@ methods = c(T,T,T,T)
 # Fixing domain ----------------------------------------------------------------
 sett = setting(domains[ntest]) 
 mesh = sett$mesh
-FEMbasis = sett$FEMbasis
-nnodes = sett$nnodes
-spatstat.linnet = sett$spatstat.linnet
+
+mesh = fdaPDE::refine.mesh.1.5D(mesh, delta=0.0025)
+FEMbasis = create.FEM.basis(mesh)
+nnodes = nrow(mesh$nodes)
+spatstat.linnet = as.linnet(mesh) # sett$spatstat.linnet
 
 plot(mesh, linewidth=0.75)
 plot(spatstat.linnet)
@@ -278,16 +280,30 @@ rmse_table_srpde <- matrix(SR_PDE$errors, nrow=SimulationBlock$num_sim, ncol=len
 colnames(rmse_table) <- col_names
 rownames(rmse_table) <- SimulationBlock$method_names
 
+median_ <- list() 
+mean_ <- list()
+for(k in 1:length(method_names)){
+  
+}
+
 for(i in 1:length(SimulationBlock$n_obs)){
-  for(j in 1:length(SimulationBlock$method_names)){
+for(j in 1:length(SimulationBlock$method_names)){
     rmse_table_method <- SimulationBlock$results[SimulationBlock$results$method == SimulationBlock$method_names[j],1]
     rmse_table_method <- matrix(rmse_table_method, 
                               nrow=SimulationBlock$num_sim, 
                               ncol=length(SimulationBlock$n_obs))
   
     rmse_list[[i]][j,] = summary(rmse_table_method[i,])
+    median_[[method_names[j]]]
   }
   write.table(format(rmse_list[[i]], digits=4), 
             file=paste0(folder.name,"test_3_RMSE_", SimulationBlock$n_obs[i],".txt"))  
 }
+
+pdf(paste0(folder.name, "SR_PDE_boxplot.pdf"), 
+    family = "serif", width = 10, height = 10)
+boxplot(SR_PDE) +
+  labs(title="RMSE (SR-PDE)", x="observations") +
+  MyTheme
+dev.off()
 
