@@ -16,6 +16,7 @@ source("../utils/utils.R")
 source("../utils/plot.R")
 source("../utils/Simulation.R")
 source("../utils/CaseStudy.R")
+source("../utils/functions_DE_with_PENALIZED_SPLINE.R")
 
 tests.names = c("test_1", "test_2", "test_3")
 ntest = 3
@@ -29,9 +30,9 @@ domains = c("estevan", "ontario",  "simplenet")
 # methods[3] -> KDE-ES    (available in spatstat package, very slow !)
 # methods[4] -> KDE-2D    (available in spatstat package)
 # methods[5] -> VORONOI   (available in spatstat package, slow      !)
-
-method_names = c("DE-PDE", "KDE-HEAT", "KDE-ES", "KDE-2D", "VORONOI")
-methods = c(T,T,F,T,T)
+# methods[6] -> PSPE       (available in utils/functions_DE_with_PENALIZED_SPLINE.R)
+method_names = c("DE-PDE", "KDE-HEAT", "KDE-ES", "KDE-2D", "VORONOI", "PSPE")
+methods = c(T,F,F,F,F,F)
 method_names = method_names[methods]
 
 # Fixing domain ----------------------------------------------------------------
@@ -91,7 +92,20 @@ if(!dir.exists(folder.name)) {
 PP = rlpp(n=n_obs[2], f = DENSITY)  
 pdf(paste0(folder.name, "test_3_point_pattern.pdf"))
 plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
-                             aes(x=x, y=y), color="red3", size=3)
+                                        aes(x=x, y=y), color="red3", size=1)
+
+plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+                                        aes(x=x, y=y), color="red3", size=2)
+
+plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+                                        aes(x=x, y=y), color="red3", size=3)
+
+plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+                             aes(x=x, y=y), color="red3", size=4)
+plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+                                        aes(x=x, y=y), color="red3", size=5)
+plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+                                        aes(x=x, y=y), color="red3", size=6)
 dev.off()
 
 # Performing simulation --------------------------------------------------------
@@ -111,7 +125,13 @@ KDE_2D <- DensityEstimationSimulation(method_name=method_names[3],
 # VORONOI ----------------------------------------------------------------------
 VORONOI <- DensityEstimationSimulation(method_name=method_names[4],
                                        n_obs = n_obs, n_sim = n_sim,
-                                       FEMbasis = FEMbasis)  
+                                       FEMbasis = FEMbasis)
+
+# PSPE --------------------------------------------------------------------------
+PSPE <- DensityEstimationSimulation(method_name=method_names[5],
+                                    n_obs = n_obs, n_sim = n_sim,
+                                    FEMbasis = FEMbasis)
+
 # Loop -------------------------------------------------------------------------
 for(j in 1:length(n_obs)){ 
   cat(paste("-------------------  n = ", n_obs[j], "  -------------------\n", sep="") ) 
@@ -131,58 +151,75 @@ for(j in 1:length(n_obs)){
     DE_PDE$update_estimate(estimate=FEM(exp(output_CPP$g), FEMbasis),i,j)
     DE_PDE$update_error(true_density, test_locs=test_locs,i,j) 
 
-    ### KDE-HEAT ### -----------------------------------------------------------
-    start = Sys.time()
-    invisible(capture.output(bw <- bw.lppl(X = PP) ))
-    invisible(capture.output(output_KDE_HEAT <- densityHeat(x = as.lpp(PP), 
-                                                               sigma = as.numeric(bw), 
-                                                               iterMax = 1e+9) )) 
-    
-    coef_ <- as.linfun(output_KDE_HEAT/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
-    KDE_HEAT$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
-    KDE_HEAT$update_error(true_density, test_locs=test_locs,i,j) 
-    
-    cat(paste0("- KDE-HEAT DONE, time elapsed = ", 
-               difftime(Sys.time(),start, units = "mins")," mins \n"))
-    
-    # KDE-2D ------------- -----------------------------------------------------
-    start = Sys.time()
-    invisible(capture.output(bw <- bw.scott(X = PP) ))
-    invisible(capture.output(output_KDE_2D <-  densityQuick.lpp(X = PP, sigma = bw))) 
-    
-    cat(paste0("- KDE-2D DONE, time elapsed = ", 
-              difftime(Sys.time(),start, units = "mins")," mins \n"))
-    coef_ <- as.linfun(output_KDE_2D/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
-    KDE_2D$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
-    KDE_2D$update_error(true_density, test_locs=test_locs,i,j=j) 
-    
-    ### VORONOI--------------------------- -------------------------------------
-    start = Sys.time()
-    invisible(capture.output(bw <- bw.voronoi(X = PP) ))
-    invisible(capture.output(output_VORONOI <- densityVoronoi(X = PP, sigma = bw) ))
-    
-    cat(paste0("- VORONOI DONE, time elapsed = ", 
-              difftime(Sys.time(),start, units = "mins")," mins \n"))
-    coef_ <- as.linfun(output_VORONOI/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
-    VORONOI$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
-    VORONOI$update_error(true_density, test_locs=test_locs,i,j=j)  
-    
+    # ### KDE-HEAT ### -----------------------------------------------------------
+    # start = Sys.time()
+    # invisible(capture.output(bw <- bw.lppl(X = PP) ))
+    # invisible(capture.output(output_KDE_HEAT <- densityHeat(x = as.lpp(PP), 
+    #                                                            sigma = as.numeric(bw), 
+    #                                                            iterMax = 1e+9) )) 
+    # 
+    # coef_ <- as.linfun(output_KDE_HEAT/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
+    # KDE_HEAT$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
+    # KDE_HEAT$update_error(true_density, test_locs=test_locs,i,j) 
+    # 
+    # cat(paste0("- KDE-HEAT DONE, time elapsed = ", 
+    #            difftime(Sys.time(),start, units = "mins")," mins \n"))
+    # 
+    # # KDE-2D ------------- -----------------------------------------------------
+    # start = Sys.time()
+    # invisible(capture.output(bw <- bw.scott(X = PP) ))
+    # invisible(capture.output(output_KDE_2D <-  densityQuick.lpp(X = PP, sigma = bw))) 
+    # 
+    # cat(paste0("- KDE-2D DONE, time elapsed = ", 
+    #           difftime(Sys.time(),start, units = "mins")," mins \n"))
+    # coef_ <- as.linfun(output_KDE_2D/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
+    # KDE_2D$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
+    # KDE_2D$update_error(true_density, test_locs=test_locs,i,j=j) 
+    # 
+    # ### VORONOI--------------------------- -------------------------------------
+    # start = Sys.time()
+    # invisible(capture.output(bw <- bw.voronoi(X = PP) ))
+    # invisible(capture.output(output_VORONOI <- densityVoronoi(X = PP, sigma = bw) ))
+    # 
+    # cat(paste0("- VORONOI DONE, time elapsed = ", 
+    #           difftime(Sys.time(),start, units = "mins")," mins \n"))
+    # coef_ <- as.linfun(output_VORONOI/n_obs[j])(mesh$nodes[,1], mesh$nodes[,2])
+    # VORONOI$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
+    # VORONOI$update_error(true_density, test_locs=test_locs,i,j=j)  
+    # 
+    # ### PSPE--------------------------------------------------------------------
+    # 
+    # delta <- 10
+    # h <- 2
+    # r <- 2
+    # spatstat.linnet$dpath <- spatstat::
+    # L <- lpp(PP, as.linnet(spatstat.linnet))
+    # L <- augment.linnet(as.linnet(L), delta, h, r)
+    # 
+    # start = Sys.time()
+    # output_PSPE <- intensity.pspline.lpp(lpp(PP, L))
+    # cat(paste0("- PSPE DONE, time elapsed = ", 
+    #            difftime(Sys.time(),start, units = "mins")," mins \n"))
+    # PSPE$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
+    # PSPE$update_error(true_density, test_locs=test_locs,i,j=j)  
+    # 
   }
   DE_PDE$compute_mean_field(j)
-  KDE_HEAT$compute_mean_field(j)
-  KDE_2D$compute_mean_field(j)
-  VORONOI$compute_mean_field(j)
+#  KDE_HEAT$compute_mean_field(j)
+#  KDE_2D$compute_mean_field(j)
+#  VORONOI$compute_mean_field(j)
+#  PSPE$compute_mean_field(j)
 }                                     
 
-save(DE_PDE, KDE_HEAT, KDE_2D, VORONOI, folder.name,
+save(folder.name, DE_PDE, #, KDE_HEAT, KDE_2D, VORONOI, folder.name,
      file = paste0(folder.name,"data",".RData"))
 
 # Post processing --------------------------------------------------------------
 
 DE_PDE$n_obs <- as.integer(DE_PDE$n_obs)
-KDE_HEAT$n_obs <- as.integer(DE_PDE$n_obs)
-KDE_2D$n_obs <- as.integer(DE_PDE$n_obs)
-VORONOI$n_obs <- as.integer(DE_PDE$n_obs)
+#KDE_HEAT$n_obs <- as.integer(DE_PDE$n_obs)
+#KDE_2D$n_obs <- as.integer(DE_PDE$n_obs)
+#VORONOI$n_obs <- as.integer(DE_PDE$n_obs)
 
 SimulationBlock <- BlockSimulation(list(DE_PDE, KDE_HEAT, KDE_2D, VORONOI))
 SimulationBlock$method_names
@@ -229,6 +266,8 @@ for(i in 1:SimulationBlock$num_methods){
   }
 }
 
+
+
 # setting same color scale
 color.min <- rep(1e5, times = length(SimulationBlock$n_obs))
 color.max <- rep(-1e5, times = length(SimulationBlock$n_obs))
@@ -248,3 +287,14 @@ DE_PDE$plot_mean_field(4L,linewidth=0.75) + viridis::scale_color_viridis(limits=
         legend.key.width = ggplot2::unit(0.5,units="cm"),
         legend.key.size = ggplot2::unit(3,units="cm"), title = element_blank()
   ) 
+
+
+# # # 
+
+for(i in 1:length(n_obs)){
+  pdf(paste0(folder.estimates,"test_3_estimated_field_",n_obs[i],".pdf"), family = "serif", width = 10, height = 10)
+  print(DE_PDE$plot_mean_field(i, linewidth=3))
+  print(DE_PDE$plot_mean_field(i,linewidth=3)+ theme( legend.position = "none"))
+  dev.off()
+}
+

@@ -238,20 +238,46 @@ dev.off()
 for(i in 1:length(n_obs)){
   pdf(paste0(folder.name,"test_3_estimated_field_",n_obs[i],".pdf"), family = "serif", width = 10, height = 10)
   print(SR_PDE$plot_mean_field(i,linewidth=3))
+  
+  print(SR_PDE$plot_mean_field(i,linewidth=3)+ theme( legend.position = "none"))
   dev.off()
 }
 
 
 j=3
-sample_ = sample(1:nnodes, size=n_obs[j])
-locs = mesh$nodes[sample_,]
-obs = observations[sample_]
 
-pdf(paste0(folder.name, "test_3_observations.pdf"))
-plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
-                                        aes(x=x, y=y, color=obs), size=3) + 
-  scale_color_viridis()
-dev.off()
+for(i in 1:length(n_obs)){
+  sample_ = sample(1:nnodes, size=n_obs[j])
+  locs = mesh$nodes[sample_,]
+  obs = observations[sample_]
+  
+  pdf(paste0(folder.name,"test_3_observations_",n_obs[i],".pdf"), family = "serif", width = 10, height = 10)
+  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                          aes(x=x, y=y, color=obs), size=4) + 
+    scale_color_viridis())
+  
+  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                aes(x=x, y=y, color=obs), size=5) + 
+          scale_color_viridis())
+  
+  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                aes(x=x, y=y, color=obs), size=6) + 
+          scale_color_viridis())
+    
+  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                          aes(x=x, y=y, color=obs), size=4) + 
+    scale_color_viridis() + theme( legend.position = "none"))
+  
+  
+  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                aes(x=x, y=y, color=obs), size=5) + 
+          scale_color_viridis() + theme( legend.position = "none"))
+  
+  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                aes(x=x, y=y, color=obs), size=6) + 
+          scale_color_viridis() + theme( legend.position = "none"))
+  dev.off()
+}
 
 plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
               colorscale =  viridis, 
