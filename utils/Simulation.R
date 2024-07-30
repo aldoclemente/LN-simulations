@@ -7,7 +7,9 @@ pacman::p_load("ggplot2", "ggforce", "viridis")
                                                n_obs="vector",      # number of observations
                                                n_sim="integer",      # number of repetitions
                                                estimates = "list",   # list of FEMs
-                                               meanField = "ANY",          # mean estimated field        
+                                               meanField = "ANY",          # mean estimated field
+                                               y_hat = "list",
+                                               mean_Y_HAT = "ANY",
                                                errors = "vector",        # error vector (RMSE)
                                                FEMbasis = "ANY"     
                                     ), 
@@ -22,18 +24,31 @@ pacman::p_load("ggplot2", "ggforce", "viridis")
                                       update_estimate = function(estimate,i,j){
                                         estimates[[(((j-1)*n_sim+i))]] <<- estimate
                                       },
+                                      update_y_hat = function(vec, i, j){
+                                        y_hat[[(((j-1)*n_sim+i))]] <<- vec
+                                      },
+                                      compute_mean_y_hat = function(j){
+                                        coef <- rep(0, times=n_obs[j])
+                                        for(i in 1:n_sim){
+                                          coef <- coef + y_hat[[(((j-1)*n_sim+i))]] / n_sim
+                                        }
+                                        mean_Y_HAT[[j]] <<- coef
+                                      },
                                       plot_mean_field = function(j, ...){
                                         
                                         plot(meanField[[j]], ...) + scale_color_viridis()
                                       })
+                                    
 )
 
 .SimulationObjectCtrHelper <- function(method_name, n_obs, n_sim, FEMbasis) {
   num_nodes <- nrow(FEMbasis$mesh$nodes)
   nullFEM <- fdaPDE::FEM(rep(NA,times=num_nodes), FEMbasis)
   estimates <- rep(list(), length=n_sim*length(n_obs))
+  y_hat <- rep(list(), length=n_sim*length(n_obs))
   errors <- rep(NA, times=n_sim*length(n_obs))
   meanField <- rep(list(), length=length(n_obs))
+  mean_Y_HAT <- rep(list(), length=length(n_obs))
   return(list(
     method_name=method_name, n_obs=n_obs, n_sim=n_sim,
     estimates = estimates, meanField=meanField, errors=errors,FEMbasis=FEMbasis)

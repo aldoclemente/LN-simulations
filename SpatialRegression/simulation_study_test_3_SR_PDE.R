@@ -121,18 +121,27 @@ Lattice <- SpatialRegressionSimulation(method_name=method_names[3],
 RR_Krig <- SpatialRegressionSimulation(method_name=method_names[4],
                                        n_obs = n_obs, n_sim = n_sim,
                                        FEMbasis = FEMbasis)  
+
+
+locations = rep(list(), times=n_sim*length(n_obs))
+OBSERVATIONS = rep(list(), times=n_sim * length(n_obs))
 # Loop -------------------------------------------------------------------------
 for(j in 1:length(n_obs)){
   cat(paste("-------------------  n = ", n_obs[j], "  -------------------\n", sep="") )
   for(i in 1:n_sim){
     cat(paste("-------------------  ", i, " / ", n_sim,"  -------------------\n", sep="") )
+    
     sample_ = sample(1:nnodes, size=n_obs[j])
     
     locs = mesh$nodes[sample_,]
     obs = observations[sample_]
+    OBSERVATIONS[[(j-1)*n_sim + i]] = obs
+    locations[[(j-1)*n_sim + i]] = locs
     
     net_dist = ND[sample_, sample_]
     
+    obs = true_signal[sample_] + rnorm(n_obs[j], mean=0, sd = 0.05*diff(range(true_signal)))
+    OBSERVATIONS[[j]] = OBSERVATIONS[[j]] + obs/n_sim
     ### SR-PDE ### ------------------------------------------------------------- 
     invisible(capture.output(output_CPP <- smooth.FEM(observations = obs, 
                                                       locations = locs,
@@ -145,7 +154,7 @@ for(j in 1:length(n_obs)){
     y_hat = eval.FEM(output_CPP$fit.FEM, locations = locs)
     SR_PDE$update_estimate(estimate = output_CPP$fit.FEM,i = i, j=j)
     SR_PDE$update_error(y_hat=y_hat , y_true=true_signal[sample_] , i=i, j=j)
-    
+    SR_PDE$update_y_hat(vec =y_hat, i = i, j = j)
     ### GWR ### ----------------------------------------------------------------
     
     data_ = data.frame(observations = obs)
@@ -165,7 +174,7 @@ for(j in 1:length(n_obs)){
                                                  dMat = net_dist)))
     GWR$update_error(y_hat = GWR.ND$SDF$yhat,
                      y_true = true_signal[sample_],i,j)
-    
+    GWR$update_y_hat(vec = GWR.ND$SDF$yhat, i=i, j=j)
     # lattice based method -----------------------------------------------------
     # dummy z-coordinates !
     locations.lattice = cbind(locs, rep(0, times=n_obs[j]))
@@ -183,7 +192,7 @@ for(j in 1:length(n_obs)){
     prediction.latt = eval.FEM(FEM(output_lattice[,4], FEMbasis), locations=locs)  
     Lattice$update_error(y_hat = prediction.latt,
                          y_true = true_signal[sample_],i,j)
-    
+    Lattice$update_y_hat(vec = prediction.latt, i=i, j=j)
     ### Reduced Rank Kriging (Ver Hoef) -------------------------------------
     
     matNames = as.character(1:nrow(locs))
@@ -198,11 +207,13 @@ for(j in 1:length(n_obs)){
                                    model=c(F,T,F,F))[[2]]
     RR_Krig$update_error(y_hat = RR.krig$cv.pred,
                          y_true = true_signal[sample_],i,j)
+    RR_Krig$update_y_hat(RR.krig$cv.pred, i=i, j=j)
   }
   SR_PDE$compute_mean_field(j)
 }                                     
 
-save(SR_PDE, GWR, Lattice, RR_Krig, folder.name,
+save(SR_PDE, GWR, Lattice, RR_Krig, locations, OBSERVATIONS,
+     folder.name,
      file = paste0(folder.name,"data",".RData"))
 
 # Post processing --------------------------------------------------------------
@@ -243,16 +254,13 @@ for(i in 1:length(n_obs)){
   dev.off()
 }
 
-
-j=3
-
+n_obs = SimulationBlock$n_obs
 for(i in 1:length(n_obs)){
-  sample_ = sample(1:nnodes, size=n_obs[j])
-  locs = mesh$nodes[sample_,]
-  obs = observations[sample_]
-  
-  pdf(paste0(folder.name,"test_3_observations_",n_obs[i],".pdf"), family = "serif", width = 10, height = 10)
-  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+  locs = locations[[i]]
+  obs = OBSERVATIONS[[i]] 
+  for(method in SimulationBlock$method_names){
+  pdf(paste0(folder.name,"test_3_observations_" , n_obs[i],".pdf"), family = "serif", width = 10, height = 10)
+  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locations[[i]][,2]),
                                           aes(x=x, y=y, color=obs), size=4) + 
     scale_color_viridis())
   
@@ -278,6 +286,50 @@ for(i in 1:length(n_obs)){
           scale_color_viridis() + theme( legend.position = "none"))
   dev.off()
 }
+}
+
+tmp = list(SR_PDE, GWR, Lattice, RR_Krig)
+names(tmp) <- SimulationBlock$method_names
+
+for(j in 1:length(n_obs)){
+  locs = locations[[j]]
+  for(method in SimulationBlock$method_names){
+    #tmp[[method]]$compute_mean_y_hat(j)
+    obs = tmp[[method]]$y_hat[[(j-1)*n_sim + 1]]
+    pdf(paste0(folder.name,"test_3_y_hat_", method , n_obs[j],".pdf"), family = "serif", width = 10, height = 10)
+    print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                  aes(x=x, y=y, color=obs), size=4) + 
+            scale_color_viridis())
+    
+    print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                  aes(x=x, y=y, color=obs), size=5) + 
+            scale_color_viridis())
+    
+    print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                  aes(x=x, y=y, color=obs), size=6) + 
+            scale_color_viridis())
+    
+    print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                  aes(x=x, y=y, color=obs), size=4) + 
+            scale_color_viridis() + theme( legend.position = "none"))
+    
+    
+    print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                  aes(x=x, y=y, color=obs), size=5) + 
+            scale_color_viridis() + theme( legend.position = "none"))
+    
+    print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                                  aes(x=x, y=y, color=obs), size=6) + 
+            scale_color_viridis() + theme( legend.position = "none"))
+    dev.off()
+  }
+}
+
+pdf(paste0(folder.name,"test_3_observations_" , n_obs[3],".pdf"), family = "serif", width = 10, height = 10)
+print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+                                              aes(x=x, y=y, color=obs), size=4) + 
+        scale_color_viridis())
+
 
 plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
               colorscale =  viridis, 
@@ -288,48 +340,38 @@ plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=3) +
   scale_color_viridis() + theme( legend.position = "none")
 dev.off()
 
-rmse_ <-  SimulationBlock$results
+# tabelle
+# SR-PDE
+cat("--- SR-PDE ---\n")
+rmse_table_sr_pde <- matrix(SR_PDE$errors, nrow=SimulationBlock$num_sim, 
+                            ncol=length(SimulationBlock$n_obs))
+colMeans(rmse_table_sr_pde)
+apply(rmse_table_sr_pde, MARGIN = 2, sd)
 
-# mean, q1, median, q3, IQR
-head(SimulationBlock$results)
-col_names <- names(summary(c(1)))
-rmse_table <- matrix(0, nrow=SimulationBlock$num_methods, ncol=length(col_names))
-colnames(rmse_table) <- col_names
-rownames(rmse_table) <- SimulationBlock$method_names
+# GWR
+cat("--- GWR ---\n")
+rmse_table_gwr <- matrix(GWR$errors, nrow=SimulationBlock$num_sim, 
+                          ncol=length(SimulationBlock$n_obs))
+colMeans(rmse_table_gwr)
+apply(rmse_table_gwr, MARGIN = 2, sd)
 
-rmse_list <- list()
-for(i in 1:length(SimulationBlock$n_obs))
-  rmse_list[[i]] <- rmse_table
+# Lattice
+cat("--- KDE 2D ---\n")
+rmse_table_lattice <- matrix(Lattice$errors, nrow=SimulationBlock$num_sim, 
+                        ncol=length(SimulationBlock$n_obs))
+colMeans(rmse_table_lattice)
+apply(rmse_table_lattice, MARGIN = 2, sd)
 
-rmse_table_srpde <- matrix(SR_PDE$errors, nrow=SimulationBlock$num_sim, ncol=length(SimulationBlock$n_obs))
+# RR Krig
+cat("--- RR Krig ---\n")
+rmse_table_krig <- matrix(RR_Krig$errors, nrow=SimulationBlock$num_sim, 
+                          ncol=length(SimulationBlock$n_obs))
+colMeans(rmse_table_krig)
+apply(rmse_table_krig, MARGIN = 2, sd)
 
-colnames(rmse_table) <- col_names
-rownames(rmse_table) <- SimulationBlock$method_names
+tmp <- cbind(colMeans(rmse_table_sr_pde), apply(rmse_table_sr_pde, MARGIN = 2, sd),
+      colMeans(rmse_table_gwr), apply(rmse_table_gwr, MARGIN = 2, sd),
+      colMeans(rmse_table_lattice), apply(rmse_table_lattice, MARGIN = 2, sd),
+      colMeans(rmse_table_krig), apply(rmse_table_krig, MARGIN = 2, sd))
 
-median_ <- list() 
-mean_ <- list()
-for(k in 1:length(method_names)){
-  
-}
-
-for(i in 1:length(SimulationBlock$n_obs)){
-for(j in 1:length(SimulationBlock$method_names)){
-    rmse_table_method <- SimulationBlock$results[SimulationBlock$results$method == SimulationBlock$method_names[j],1]
-    rmse_table_method <- matrix(rmse_table_method, 
-                              nrow=SimulationBlock$num_sim, 
-                              ncol=length(SimulationBlock$n_obs))
-  
-    rmse_list[[i]][j,] = summary(rmse_table_method[i,])
-    median_[[method_names[j]]]
-  }
-  write.table(format(rmse_list[[i]], digits=4), 
-            file=paste0(folder.name,"test_3_RMSE_", SimulationBlock$n_obs[i],".txt"))  
-}
-
-pdf(paste0(folder.name, "SR_PDE_boxplot.pdf"), 
-    family = "serif", width = 10, height = 10)
-boxplot(SR_PDE) +
-  labs(title="RMSE (SR-PDE)", x="observations") +
-  MyTheme
-dev.off()
-
+tmp[1,]
