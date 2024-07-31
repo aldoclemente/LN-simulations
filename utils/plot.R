@@ -57,7 +57,7 @@ plot.FEM <-function(x, ...){
 }
 
 plot.colorbar <- function(x, limits= NULL, colorscale = jet.col, 
-                          horizontal = FALSE, cex.axis = 2,
+                          horizontal = FALSE, cex.axis = 2, width= 5,
                           file = "plot.pdf"){
   
   mesh <- x$FEMbasis$mesh
@@ -83,19 +83,19 @@ plot.colorbar <- function(x, limits= NULL, colorscale = jet.col,
   pdf(paste0(file, "_horiziontal.pdf"), family = "serif", width = 11, height = 3)
   par(mai = c(1,0.75,0,0))
   plot(c(0, 112.5), c(0, 15), type = "n", xlab = "", ylab = "", xaxt = "n", yaxt = "n", frame.plot = F)
-  gradient.rect(0, 0, 100, 5, col = colorscale(1000), border = "black")
+  gradient.rect(0, 0, 100, width, col = colorscale(1000), border = "black")
   axis(1, at = at, labels = labels, # at = c(0,33.33,66.66,100)
        cex.axis = cex.axis, lwd.ticks = 0, lwd = 0) # lwd.ticks = 2, 
-  text(107,2, TeX(text_), cex = 2)
+  text(107, 2, TeX(text_), cex = 2)
   dev.off()
   
   pdf(paste0(file, "_vertical.pdf"), family = "serif", width = 3, height = 11)
   #x11(width = 3, height = 11)
   par(mai = c(1,0.75,0,0))
   plot(c(0, 15), c(0, 112.5), type = "n", xlab = "", ylab = "", xaxt = "n", yaxt = "n", frame.plot = F)
-  gradient.rect(0, 0, 5, 100, col = colorscale(1000), border = "black", gradient = "y")
+  gradient.rect(0, 0, width, 100, col = colorscale(1000), border = "black", gradient = "y")
   axis(4, at = at, labels = labels, # at = c(0,33.33,66.66,100)
-       cex.axis = cex.axis, lwd.ticks = 0, lwd = 0,  line=-7.5) # lwd.ticks = 2, 
+       cex.axis = cex.axis, lwd.ticks = 0, lwd = 0,  line=-11.5+width) # lwd.ticks = 2, 
   text(2.5, 107, TeX(text_), cex = 2)
   dev.off()
   

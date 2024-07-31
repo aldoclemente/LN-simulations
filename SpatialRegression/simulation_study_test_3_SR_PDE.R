@@ -160,6 +160,7 @@ for(j in 1:length(n_obs)){
     data_ = data.frame(observations = obs)
     Sp.data = SpatialPointsDataFrame(coords = locs,
                                      data = data_)
+    
     # ND
     invisible(capture.output(bw.ND <- bw.gwr(observations ~ 1,
                                              data = Sp.data, 
@@ -172,9 +173,25 @@ for(j in 1:length(n_obs)){
                                                  kernel = "gaussian",
                                                  bw = bw.ND,
                                                  dMat = net_dist)))
+    
     GWR$update_error(y_hat = GWR.ND$SDF$yhat,
                      y_true = true_signal[sample_],i,j)
     GWR$update_y_hat(vec = GWR.ND$SDF$yhat, i=i, j=j)
+    
+    predict_dist = ND[sample_, ]
+    
+    Sp.predict = SpatialPointsDataFrame(coords=mesh$nodes, 
+                                        data = data.frame(matrix(NA, nrow=nrow(mesh$nodes),ncol=1)))
+    invisible(capture.output(GWR.ND <- gwr.predict(observations ~ 1, 
+                          data = Sp.data,
+                          predictdata = Sp.predict ,
+                          kernel = "gaussian",
+                          bw = bw.ND,
+                          dMat1 = predict_dist, 
+                          dMat2 = net_dist)))
+    
+    GWR$update_estimate(estimate = FEM(GWR.ND$SDF$prediction, FEMbasis), i = i, j=j)
+    
     # lattice based method -----------------------------------------------------
     # dummy z-coordinates !
     locations.lattice = cbind(locs, rep(0, times=n_obs[j]))
@@ -189,7 +206,8 @@ for(j in 1:length(n_obs)){
                                   locs = locations.lattice,
                                   Z = obs,
                                   k = output_press$k)
-    prediction.latt = eval.FEM(FEM(output_lattice[,4], FEMbasis), locations=locs)  
+    prediction.latt = eval.FEM(FEM(output_lattice[,4], FEMbasis), locations=locs)
+    Lattice$update_estimate(estimate = FEM(output_lattice[,4], FEMbasis), i = i, j=j)
     Lattice$update_error(y_hat = prediction.latt,
                          y_true = true_signal[sample_],i,j)
     Lattice$update_y_hat(vec = prediction.latt, i=i, j=j)
@@ -201,15 +219,26 @@ for(j in 1:length(n_obs)){
     
     knots = create_knots(locations=locs)
     
-    RR.krig = rank_reduced_kriging(obs, 
-                                   net_dist, 
-                                   knots, 
-                                   model=c(F,T,F,F))[[2]]
-    RR_Krig$update_error(y_hat = RR.krig$cv.pred,
+    predict_net_dist = ND[, sample_]
+    rownames(predict_net_dist) =as.character(1:nrow(mesh$nodes))
+    colnames(predict_net_dist) = matNames
+    
+    RR.krig = CovMat_RRKrig(obs, net_dist, knots, 
+                            predict_net_dist = predict_net_dist,   
+                            cov_model="sph")
+    RR.krig$prediction
+    RR.krig
+    
+    
+    RR_Krig$update_error(y_hat = LOOCV(RR.krig$CovMat, obs)$cv.pred,
                          y_true = true_signal[sample_],i,j)
     RR_Krig$update_y_hat(RR.krig$cv.pred, i=i, j=j)
+    RR_Krig$update_estimate(FEM(RR.krig$prediction, FEMbasis), i, j)
   }
   SR_PDE$compute_mean_field(j)
+  GWR$compute_mean_field(j)
+  Lattice$compute_mean_field(j)
+  RR_Krig$compute_mean_field(j)
 }                                     
 
 save(SR_PDE, GWR, Lattice, RR_Krig, locations, OBSERVATIONS,
@@ -235,58 +264,94 @@ MyTheme <- theme(
 )
 SimulationBlock$method_names
 ORDER = c(1,3,2,4)
-pdf(paste0(folder.name,"test_3_RMSE.pdf"),width = 12)
+pdf(paste0(folder.name,"RMSE.pdf"),width = 12)
 boxplot(SimulationBlock, ORDER) +
   labs(title="RMSE", x="observations") +
   theme(legend.position = c(0.90,0.80)) +
   MyTheme
 dev.off()
 
-pdf(paste0(folder.name, "test_3_domain.pdf"))
+pdf(paste0(folder.name, "domain.pdf"))
 plot(mesh, linewidth=0.75)
 dev.off()
 
-for(i in 1:length(n_obs)){
-  pdf(paste0(folder.name,"test_3_estimated_field_",n_obs[i],".pdf"), family = "serif", width = 10, height = 10)
-  print(SR_PDE$plot_mean_field(i,linewidth=3))
-  
-  print(SR_PDE$plot_mean_field(i,linewidth=3)+ theme( legend.position = "none"))
-  dev.off()
+
+# setting same color scale
+color.min <- rep(0., times = length(SimulationBlock$n_obs))
+color.max <- rep(max(true_signal), times = length(SimulationBlock$n_obs))
+
+for(j in 1:length(SimulationBlock$n_obs)){
+  for(i in 1:SimulationBlock$num_methods){
+    color.min[j] <- min(min(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+                        color.min[j])
+    color.max[j] <- max(max(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+                        color.max[j])
+  }
+}
+cbind(color.min, color.max)
+
+for(i in 1:SimulationBlock$num_methods){
+  for(j in 1:length(SimulationBlock$n_obs)){
+    pdf(paste0(folder.name,"estimated_field_same_scale_", 
+               SimulationBlock$Simulations[[i]]$method_name,"_",
+               SimulationBlock$n_obs[j],".pdf"))
+    print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3)+
+            viridis::scale_color_viridis(limits=c(color.min[i],color.max[i])))
+    print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3)+
+            viridis::scale_color_viridis(limits=c(color.min[i],color.max[i])) + 
+            theme( legend.position = "none"))
+    dev.off()
+  }
 }
 
+plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
+              colorscale =  viridis, limits = c(color.min[2], color.max[2]),
+              width = 2,
+              file = paste0(folder.name,"colorbar"))
+
+pdf(paste0(folder.name, "true_field.pdf"), family = "serif", width = 10, height = 10)
+plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=3) +
+  scale_color_viridis(limits=c(color.min[i],color.max[i])) +
+  theme( legend.position = "none")
+
+plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=4) +
+  scale_color_viridis(limits=c(color.min[i],color.max[i])) +
+  theme( legend.position = "none")
+
+dev.off()
+
 n_obs = SimulationBlock$n_obs
-for(i in 1:length(n_obs)){
-  locs = locations[[i]]
-  obs = OBSERVATIONS[[i]] 
-  for(method in SimulationBlock$method_names){
-  pdf(paste0(folder.name,"test_3_observations_" , n_obs[i],".pdf"), family = "serif", width = 10, height = 10)
-  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locations[[i]][,2]),
+for(j in 1:length(n_obs)){
+  locs = locations[[(j-1)*n_sim + 1]]
+  obs = OBSERVATIONS[[(j-1)*n_sim + 1]] 
+  pdf(paste0(folder.name,"observations_" , n_obs[j],".pdf"), family = "serif", width = 10, height = 10)
+  print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locations[[i]][,2]),
                                           aes(x=x, y=y, color=obs), size=4) + 
     scale_color_viridis())
   
-  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+  print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                 aes(x=x, y=y, color=obs), size=5) + 
           scale_color_viridis())
   
-  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+  print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                 aes(x=x, y=y, color=obs), size=6) + 
           scale_color_viridis())
     
-  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+  print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                           aes(x=x, y=y, color=obs), size=4) + 
     scale_color_viridis() + theme( legend.position = "none"))
   
   
-  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+  print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                 aes(x=x, y=y, color=obs), size=5) + 
           scale_color_viridis() + theme( legend.position = "none"))
   
-  print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+  print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                 aes(x=x, y=y, color=obs), size=6) + 
           scale_color_viridis() + theme( legend.position = "none"))
   dev.off()
 }
-}
+
 
 tmp = list(SR_PDE, GWR, Lattice, RR_Krig)
 names(tmp) <- SimulationBlock$method_names
@@ -296,8 +361,8 @@ for(j in 1:length(n_obs)){
   for(method in SimulationBlock$method_names){
     #tmp[[method]]$compute_mean_y_hat(j)
     obs = tmp[[method]]$y_hat[[(j-1)*n_sim + 1]]
-    pdf(paste0(folder.name,"test_3_y_hat_", method , n_obs[j],".pdf"), family = "serif", width = 10, height = 10)
-    print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
+    pdf(paste0(folder.name,"y_hat_", method , n_obs[j],".pdf"), family = "serif", width = 10, height = 10)
+    print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                   aes(x=x, y=y, color=obs), size=4) + 
             scale_color_viridis())
     
@@ -324,21 +389,6 @@ for(j in 1:length(n_obs)){
     dev.off()
   }
 }
-
-pdf(paste0(folder.name,"test_3_observations_" , n_obs[3],".pdf"), family = "serif", width = 10, height = 10)
-print(plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
-                                              aes(x=x, y=y, color=obs), size=4) + 
-        scale_color_viridis())
-
-
-plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
-              colorscale =  viridis, 
-              file = paste0(folder.name,"colorbar"))
-
-pdf(paste0(folder.name, "true_field.pdf"), family = "serif", width = 10, height = 10)
-plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=3) + 
-  scale_color_viridis() + theme( legend.position = "none")
-dev.off()
 
 # tabelle
 # SR-PDE

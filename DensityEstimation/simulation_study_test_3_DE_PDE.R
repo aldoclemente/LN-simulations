@@ -90,21 +90,21 @@ if(!dir.exists(folder.name)) {
 
 # point pattern plot -----------------------------------------------------------
 PP = rlpp(n=n_obs[2], f = DENSITY)  
-pdf(paste0(folder.name, "test_3_point_pattern.pdf"))
-plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+pdf(paste0(folder.name, "point_pattern.pdf"))
+plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
                                         aes(x=x, y=y), color="red3", size=1)
 
-plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
                                         aes(x=x, y=y), color="red3", size=2)
 
-plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
                                         aes(x=x, y=y), color="red3", size=3)
 
-plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
                              aes(x=x, y=y), color="red3", size=4)
-plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
                                         aes(x=x, y=y), color="red3", size=5)
-plot(mesh, linewidth=0.75) + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
+plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=PP$data$x,y=PP$data$y),
                                         aes(x=x, y=y), color="red3", size=6)
 dev.off()
 
@@ -298,6 +298,7 @@ for(i in 1:SimulationBlock$num_methods){
 
 plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
               colorscale =  viridis, limits = c(color.min[2], color.max[2]),
+              width = 2,
               file = paste0(folder.name,"colorbar"))
 
 pdf(paste0(folder.name, "true_field.pdf"), family = "serif", width = 10, height = 10)
