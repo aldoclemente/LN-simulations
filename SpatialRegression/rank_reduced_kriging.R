@@ -87,8 +87,9 @@ rank_reduced_kriging <- function(obs,
   return(ret_)
 }
 
-CovMat_RRKrig <- function(obs, net_dist, knots, cov_model="sph",
-                          predict_net_dist=NULL){ # "exp" "sph" "gau" "cau" 
+CovMat_RRKrig <- function(obs, net_dist, knots, cov_model="sph", # "exp" "sph" "gau" "cau"
+                          predict_net_dist=NULL,
+                          theta = c(log(2), log(15000), log(10000), log(.7))){ 
   
   
   i = match(cov_model, c("exp", "sph", "gau", "cau"))
@@ -96,18 +97,14 @@ CovMat_RRKrig <- function(obs, net_dist, knots, cov_model="sph",
   rrDist = net_dist[,rownames(knots)]
   knDist = as.matrix(dist(knots, diag = TRUE, upper = TRUE))
   
-  if(!is.null(predict_net_dist)){
-    predict_rrDist = predict_net_dist[,rownames(knots)]
-  }
-  
   CovMat = NULL  
   if(i == 1){
     # -------------------------------------------------------------------------
     #               Reduce Rank Exponential Model
     # -------------------------------------------------------------------------
-    theta = c(log(2), log(15000), log(10000), log(.7))
     RRexpEst = optim(theta, m2LLrr, z = obs,  
-                     rrDist = rrDist, knDist = knDist)
+                     rrDist = rrDist, knDist = knDist,
+                     control = list(maxit = 650))
     param_estimates=list(sigmap = exp(RRexpEst$par)[1], 
                          alpha = exp(RRexpEst$par)[2], 
                          rho = exp(RRexpEst$par)[3],
@@ -116,44 +113,32 @@ CovMat_RRKrig <- function(obs, net_dist, knots, cov_model="sph",
     CovMat = param_estimates$sigmap^2*exp(-rrDist/param_estimates$alpha) %*% 
       solve(exp(-knDist/param_estimates$rho)) %*% t(exp(-rrDist/param_estimates$alpha)) + 
       diag(rep(param_estimates$sigma0^2, times = length(rrDist[,1])))
-    if(!is.null(predict_net_dist)){
-      predict_CovMat = param_estimates$sigmap^2*exp(-predict_rrDist/param_estimates$alpha) %*% 
-        solve(exp(-knDist/param_estimates$rho)) %*% t(exp(-rrDist/param_estimates$alpha)) 
-    #  + diag(rep(param_estimates$sigma0^2, times = length(predict_rrDist[,1]))) 
-    }
   }
   if(i==2){
     # -------------------------------------------------------------------------
     #               Reduce Rank Spherical Model
     # -------------------------------------------------------------------------
-    theta = c(log(2), log(15000), log(10000), log(.7))
     RRsphEst = optim(theta, m2LLrr, z = obs,  
-                     rrDist = rrDist, knDist = knDist, corMod = 'sph')
+                     rrDist = rrDist, knDist = knDist, corMod = 'sph',
+                     control = list(maxit = 1000))
     param_estimates=list(
           sigmap = exp(RRsphEst$par)[1],
           alpha = exp(RRsphEst$par)[2],
           rho = exp(RRsphEst$par)[3],
           sigma0 = exp(RRsphEst$par)[4])
-    
+        
     CovMat = param_estimates$sigmap^2*acor.sph(rrDist,param_estimates$alpha) %*% 
       solve(acor.sph(knDist,param_estimates$rho)) %*% 
       t(acor.sph(rrDist,param_estimates$alpha)) + 
       diag(rep(param_estimates$sigma0^2, times = length(rrDist[,1])))
-    if(!is.null(predict_net_dist)){
-      predict_CovMat = param_estimates$sigmap^2*acor.sph(predict_rrDist,param_estimates$alpha) %*% 
-        solve(acor.sph(knDist,param_estimates$rho)) %*% 
-        t(acor.sph(rrDist,param_estimates$alpha)) #+ 
-        #diag(rep(param_estimates$sigma0^2, times = length(predict_rrDist[,1]))) 
-    }
   }
-  
   if(i==3){
     # -------------------------------------------------------------------------
     #               Reduce Rank Gaussian Model
     # -------------------------------------------------------------------------
-    theta = c(log(2), log(15000), log(10000), log(.7))
     RRgauEst = optim(theta, m2LLrr, z = obs,  
-                     rrDist = rrDist, knDist = knDist, corMod = 'gau')
+                     rrDist = rrDist, knDist = knDist, corMod = 'gau',
+                     control = list(maxit = 1000))
     param_estimates=list(
                   sigmap = exp(RRgauEst$par)[1],
                   alpha = exp(RRgauEst$par)[2],
@@ -163,21 +148,14 @@ CovMat_RRKrig <- function(obs, net_dist, knots, cov_model="sph",
       solve(acor.gau(knDist,param_estimates$rho)) %*% 
       t(acor.gau(rrDist,param_estimates$alpha)) + 
       diag(rep(param_estimates$sigma0^2, times = length(rrDist[,1])))
-    if(!is.null(predict_net_dist)){
-      predict_CovMat = param_estimates$sigmap^2*acor.gau(predict_rrDist,param_estimates$alpha) %*% 
-        solve(acor.gau(knDist,param_estimates$rho)) %*% 
-        t(acor.gau(rrDist,param_estimates$alpha)) 
-      #+ 
-      #  diag(rep(param_estimates$sigma0^2, times = length(predict_rrDist[,1]))) 
-    }
   }
   if(i==4){
     # -------------------------------------------------------------------------
     #               Reduce Rank Cauchy Model
     # -------------------------------------------------------------------------
-    theta = c(log(2), log(15000), log(10000), log(.7))
     RRcauEst = optim(theta, m2LLrr, z = obs,  
-                     rrDist = rrDist, knDist = knDist, corMod = 'cau')
+                     rrDist = rrDist, knDist = knDist, corMod = 'cau',
+                     control = list(maxit = 1000))
     param_estimates=list(
             sigmap = exp(RRcauEst$par)[1],
             alpha = exp(RRcauEst$par)[2],
@@ -187,16 +165,8 @@ CovMat_RRKrig <- function(obs, net_dist, knots, cov_model="sph",
       solve(acor.cau(knDist,param_estimates$rho)) %*% 
       t(acor.cau(rrDist,param_estimates$alpha)) + 
       diag(rep(param_estimates$sigma0^2, times = length(rrDist[,1])))
-    if(!is.null(predict_net_dist)){
-      predict_CovMat = param_estimates$sigmap^2*acor.cau(predict_rrDist,param_estimates$alpha) %*% 
-        solve(acor.cau(knDist,param_estimates$rho)) %*% 
-        t(acor.cau(predict_rrDist,param_estimates$alpha)) + 
-        diag(rep(param_estimates$sigma0^2, times = length(predict_rrDist[,1]))) 
-    }
   }
-  
-  
-  
+
   if(is.null(predict_net_dist)){
     ret_ = list(CovMat = CovMat, param_estimates=param_estimates, 
                 predict_CovMat = NULL, prediction = NULL,
@@ -204,15 +174,39 @@ CovMat_RRKrig <- function(obs, net_dist, knots, cov_model="sph",
   }else{
     
     prediction = vector(mode="double", length = nrow(predict_net_dist))
-    for(i in 1:nrow(predict_CovMat)){
-      k = predict_CovMat[i,]
-      w = solve(CovMat, k)
-      prediction[i] = t(w) %*% obs 
-    }
+    
+    Rho = list(exp=ExpMod, sph=SphMod , gau=GauMod, cau=CauMod)
   
-    ret_ = list(CovMat = CovMat, param_estimates=param_estimates,
-                predict_CovMat = predict_CovMat, prediction = prediction,
+    #invC = solve(CovMat)
+    # da modificare
+    
+    One_ = matrix(1, nrow=nrow(CovMat))
+    c_ =  param_estimates$sigmap^2*Rho[[cov_model]](predict_net_dist, param_estimates$alpha)
+    z_ = solve(CovMat,c_)
+    w_ = solve(CovMat, One_)
+    v_ = One_ %*% ( 1. - t(One_)%*%z_)/as.numeric((t(One_)%*%w_))
+    b_ = ( c_ + v_ )
+
+    lambda_ = solve(t(CovMat), b_)
+    prediction = t(lambda_) %*% obs
+    
+    ret_ = list(CovMat = CovMat, param_estimates=param_estimates, 
+                prediction = prediction,
                 cov_model=c("exp", "sph", "gau", "cau")[i])
   }
   return(ret_)
 }
+
+
+# A = rbind(CovMat, rep(1, times=nrow(predict_net_dist)))
+# A = cbind(A, c( rep(1, times=nrow(predict_net_dist)), 0))
+# tmp = vector(mode="double", length = ncol(predict_net_dist))
+# for(k in 1:nrow(predict_net_dist)){
+#   
+#   Gamma0 = param_estimates$sigmap^2*Rho[[cov_model]](predict_net_dist[,k], param_estimates$alpha) 
+#   b = c(Gamma0, 1)
+#   lam_ = solve(A,b)  
+#   tmp[k] = t(lam_[1:length(obs)]) %*% obs
+# }
+# 
+# range(tmp)

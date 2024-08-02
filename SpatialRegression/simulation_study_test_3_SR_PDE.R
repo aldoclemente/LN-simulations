@@ -2,7 +2,9 @@ graphics.off()
 rm(list=ls())
 
 # Spatial Regression over Linear Networks --------------------------------------
-
+rmse <- function(x,y){
+  return( sqrt( mean( (x-y)^2 ) ) )
+}
 if(!require(pacman)) install.packages("pacman")
 pacman::p_load("rstudioapi")
 
@@ -84,6 +86,13 @@ plot(FEM(true_signal, FEMbasis), linewidth=0.75)  + scale_color_viridis()
 
 observations <- true_signal + rnorm(nnodes, mean=0, sd = 0.05*diff(range(true_signal)))
 
+# test_locations = runiflpp(1000, L=spatstat.linnet)
+# test_locations = cbind(testc_locations$data$x, test_locations$data$y)
+# test_true = aux_density(test_locations[,1], test_locations[,2])
+
+test_locations = mesh$nodes
+test_true = aux_density(test_locations[,1], test_locations[,2])
+
 # Building folders -------------------------------------------------------------
 date_ = gsub(":","_",gsub(" ","-",Sys.time()))
 if(!dir.exists("data/")) {
@@ -130,18 +139,23 @@ for(j in 1:length(n_obs)){
   cat(paste("-------------------  n = ", n_obs[j], "  -------------------\n", sep="") )
   for(i in 1:n_sim){
     cat(paste("-------------------  ", i, " / ", n_sim,"  -------------------\n", sep="") )
+      
+    PP = runiflpp(n=n_obs[j], L=spatstat.linnet)
+    locs = cbind(PP$data$x, PP$data$y)
+    net_dist = compute_dist_matrix(points1 = locs, points2 = locs, L = spatstat.linnet)
     
-    sample_ = sample(1:nnodes, size=n_obs[j])
+    #sample_ = sample(1:nnodes, size=n_obs[j])
     
-    locs = mesh$nodes[sample_,]
-    obs = observations[sample_]
+    #locs = mesh$nodes[sample_,]
+    #obs = observations[sample_]
+    obs = aux_density(locs[,1], locs[,2]) + rnorm(n=n_obs[j], mean=0, sd=0.05*abs(diff(range(true_signal))))
     OBSERVATIONS[[(j-1)*n_sim + i]] = obs
     locations[[(j-1)*n_sim + i]] = locs
     
-    net_dist = ND[sample_, sample_]
+    #net_dist = ND[sample_, sample_]
     
-    obs = true_signal[sample_] + rnorm(n_obs[j], mean=0, sd = 0.05*diff(range(true_signal)))
-    OBSERVATIONS[[j]] = OBSERVATIONS[[j]] + obs/n_sim
+    #obs = true_signal[sample_] + rnorm(n_obs[j], mean=0, sd = 0.05*diff(range(true_signal)))
+    #OBSERVATIONS[[j]] = OBSERVATIONS[[j]] + obs/n_sim
     ### SR-PDE ### ------------------------------------------------------------- 
     invisible(capture.output(output_CPP <- smooth.FEM(observations = obs, 
                                                       locations = locs,
@@ -153,8 +167,12 @@ for(j in 1:length(n_obs)){
     
     y_hat = eval.FEM(output_CPP$fit.FEM, locations = locs)
     SR_PDE$update_estimate(estimate = output_CPP$fit.FEM,i = i, j=j)
-    SR_PDE$update_error(y_hat=y_hat , y_true=true_signal[sample_] , i=i, j=j)
+    #SR_PDE$update_error(y_hat=y_hat , y_true=aux_density(locs[,1], locs[,2]) , i=i, j=j)
     SR_PDE$update_y_hat(vec =y_hat, i = i, j = j)
+    
+    #rmse(eval.FEM(output_CPP$fit.FEM, locations=test_locations), test_true)
+    SR_PDE$update_error(y_hat=eval.FEM(output_CPP$fit.FEM, test_locations), y_true=test_true,i,j)
+                                              
     ### GWR ### ----------------------------------------------------------------
     
     data_ = data.frame(observations = obs)
@@ -168,29 +186,32 @@ for(j in 1:length(n_obs)){
                                              kernel="gaussian",
                                              dMat = net_dist)))
     
-    invisible(capture.output(GWR.ND <- gwr.basic(observations ~ 1, 
-                                                 data = Sp.data, 
-                                                 kernel = "gaussian",
-                                                 bw = bw.ND,
-                                                 dMat = net_dist)))
-    
-    GWR$update_error(y_hat = GWR.ND$SDF$yhat,
-                     y_true = true_signal[sample_],i,j)
-    GWR$update_y_hat(vec = GWR.ND$SDF$yhat, i=i, j=j)
-    
-    predict_dist = ND[sample_, ]
-    
-    Sp.predict = SpatialPointsDataFrame(coords=mesh$nodes, 
-                                        data = data.frame(matrix(NA, nrow=nrow(mesh$nodes),ncol=1)))
+    # invisible(capture.output(GWR.ND <- gwr.basic(observations ~ 1, 
+    #                                              data = Sp.data, 
+    #                                              kernel = "gaussian",
+    #                                              bw = bw.ND,
+    #                                              dMat = net_dist)))
+    # 
+    # GWR$update_error(y_hat = GWR.ND$SDF$yhat,
+    #                  y_true = true_signal[sample_],i,j)
+    # GWR$update_y_hat(vec = GWR.ND$SDF$yhat, i=i, j=j)
+    # 
+    # #predict_dist = ND[sample_, ]
+    predict_net_dist = compute_dist_matrix(locs, test_locations, spatstat.linnet)
+    Sp.predict = SpatialPointsDataFrame(coords=test_locations, 
+                                        data = data.frame(matrix(NA, nrow=nrow(test_locations),ncol=1)))
     invisible(capture.output(GWR.ND <- gwr.predict(observations ~ 1, 
                           data = Sp.data,
                           predictdata = Sp.predict ,
                           kernel = "gaussian",
                           bw = bw.ND,
-                          dMat1 = predict_dist, 
+                          dMat1 = predict_net_dist, 
                           dMat2 = net_dist)))
     
+    #rmse( GWR.ND$SDF$prediction, test_true)
+    GWR$update_error(y_hat=GWR.ND$SDF$prediction, y_true=test_true,i,j)
     GWR$update_estimate(estimate = FEM(GWR.ND$SDF$prediction, FEMbasis), i = i, j=j)
+    
     
     # lattice based method -----------------------------------------------------
     # dummy z-coordinates !
@@ -208,9 +229,13 @@ for(j in 1:length(n_obs)){
                                   k = output_press$k)
     prediction.latt = eval.FEM(FEM(output_lattice[,4], FEMbasis), locations=locs)
     Lattice$update_estimate(estimate = FEM(output_lattice[,4], FEMbasis), i = i, j=j)
-    Lattice$update_error(y_hat = prediction.latt,
-                         y_true = true_signal[sample_],i,j)
+    # Lattice$update_error(y_hat = prediction.latt,
+    #                      y_true = aux_density(locs[,1], locs[,2]),i,j)
+    Lattice$update_error(y_hat=eval.FEM(FEM(output_lattice[,4], FEMbasis), test_locations), 
+                               y_true=test_true,i,j)
+    
     Lattice$update_y_hat(vec = prediction.latt, i=i, j=j)
+    #rmse( eval.FEM(FEM(output_lattice[,4], FEMbasis), test_locations), test_true )
     ### Reduced Rank Kriging (Ver Hoef) -------------------------------------
     
     matNames = as.character(1:nrow(locs))
@@ -219,19 +244,24 @@ for(j in 1:length(n_obs)){
     
     knots = create_knots(locations=locs)
     
-    predict_net_dist = ND[, sample_]
-    rownames(predict_net_dist) =as.character(1:nrow(mesh$nodes))
-    colnames(predict_net_dist) = matNames
+    #predict_dist = t(predict_dist)
+    #rownames(predict_dist) =as.character(1:nrow(test_locations))
+    #colnames(predict_dist) = matNames
+    #tmp <- rank_reduced_kriging(obs, net_dist, knots, model=c(F,T,F,F))
+    #theta = c(log(2), log(15000), log(1000), log(0.7))
     
+    #predict_rrDist = compute_dist_matrix(test_locations, knots, spatstat.linnet)
+    theta = c(log(2), log(0.5), log(0.5), log(0.7))
     RR.krig = CovMat_RRKrig(obs, net_dist, knots, 
-                            predict_net_dist = predict_net_dist,   
-                            cov_model="sph")
-    RR.krig$prediction
-    RR.krig
-    
-    
-    RR_Krig$update_error(y_hat = LOOCV(RR.krig$CovMat, obs)$cv.pred,
-                         y_true = true_signal[sample_],i,j)
+                            predict_net_dist = predict_net_dist,
+                            cov_model = "sph", 
+                            theta = theta# log(0.7)) # c(log(2), 8, 6.5, log(0.7)
+                            ) #, theta=theta)
+    rmse(RR.krig$prediction, test_true)
+    range(RR.krig$prediction)
+    RR_Krig$update_error(y_hat = RR.krig$prediction, test_true,i,j)
+    # RR_Krig$update_error(y_hat = LOOCV(RR.krig$CovMat, obs)$cv.pred,
+    #                      y_true = true_signal[sample_],i,j)
     RR_Krig$update_y_hat(RR.krig$cv.pred, i=i, j=j)
     RR_Krig$update_estimate(FEM(RR.krig$prediction, FEMbasis), i, j)
   }
@@ -277,7 +307,7 @@ dev.off()
 
 
 # setting same color scale
-color.min <- rep(0., times = length(SimulationBlock$n_obs))
+color.min <- rep(min(true_signal), times = length(SimulationBlock$n_obs))
 color.max <- rep(max(true_signal), times = length(SimulationBlock$n_obs))
 
 for(j in 1:length(SimulationBlock$n_obs)){
@@ -296,59 +326,67 @@ for(i in 1:SimulationBlock$num_methods){
                SimulationBlock$Simulations[[i]]$method_name,"_",
                SimulationBlock$n_obs[j],".pdf"))
     print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3)+
-            viridis::scale_color_viridis(limits=c(color.min[i],color.max[i])))
+            viridis::scale_color_viridis(limits=c(color.min[j],color.max[j])))
     print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3)+
-            viridis::scale_color_viridis(limits=c(color.min[i],color.max[i])) + 
+            viridis::scale_color_viridis(limits=c(color.min[j],color.max[j])) + 
             theme( legend.position = "none"))
     dev.off()
   }
 }
 
-plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
-              colorscale =  viridis, limits = c(color.min[2], color.max[2]),
-              width = 2,
-              file = paste0(folder.name,"colorbar"))
+# plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
+#               colorscale =  viridis, limits = c(color.min[2], color.max[2]),
+#               width = 2,
+#               file = paste0(folder.name,"colorbar"))
 
-pdf(paste0(folder.name, "true_field.pdf"), family = "serif", width = 10, height = 10)
-plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=3) +
-  scale_color_viridis(limits=c(color.min[i],color.max[i])) +
-  theme( legend.position = "none")
+for(j in 1:length(SimulationBlock$n_obs)){
+print(plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
+                    colorscale =  viridis, limits = c(color.min[j], color.max[j]),
+                    width = 2,
+                    file = paste0(folder.name,paste0("colorbar_", n_obs[j]))))
+}
 
-plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=4) +
-  scale_color_viridis(limits=c(color.min[i],color.max[i])) +
-  theme( legend.position = "none")
 
+for(j in 1:length(SimulationBlock$n_obs)){
+pdf(paste0(folder.name, "true_field_", n_obs[j], ".pdf"), family = "serif", width = 10, height = 10)
+print(plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=3) +
+  scale_color_viridis(limits=c(color.min[j],color.max[j])) +
+  theme( legend.position = "none") )
+print(plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=4) +
+  scale_color_viridis(limits=c(color.min[j],color.max[j])) +
+  theme( legend.position = "none"))
 dev.off()
+}
 
-n_obs = SimulationBlock$n_obs
+#n_obs = SimulationBlock$n_obs
 for(j in 1:length(n_obs)){
   locs = locations[[(j-1)*n_sim + 1]]
-  obs = OBSERVATIONS[[(j-1)*n_sim + 1]] 
+  obs = OBSERVATIONS[[(j-1)*n_sim + 1]]
   pdf(paste0(folder.name,"observations_" , n_obs[j],".pdf"), family = "serif", width = 10, height = 10)
   print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locations[[i]][,2]),
                                           aes(x=x, y=y, color=obs), size=4) + 
-    scale_color_viridis())
+    scale_color_viridis(limits=c(min(color.min[j], min(obs)), max(color.max[j], max(obs)))))
   
   print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                 aes(x=x, y=y, color=obs), size=5) + 
-          scale_color_viridis())
+          scale_color_viridis(limits=c(min(color.min[j], min(obs)), max(color.max[j], max(obs)))))
   
   print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                 aes(x=x, y=y, color=obs), size=6) + 
-          scale_color_viridis())
+          scale_color_viridis(limits=c(min(color.min[j], min(obs)), max(color.max[j], max(obs)))))
     
   print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                           aes(x=x, y=y, color=obs), size=4) + 
-    scale_color_viridis() + theme( legend.position = "none"))
+    scale_color_viridis(limits=c(min(color.min[j], min(obs)), max(color.max[j], max(obs)))) + theme( legend.position = "none"))
   
   
   print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                 aes(x=x, y=y, color=obs), size=5) + 
-          scale_color_viridis() + theme( legend.position = "none"))
+          scale_color_viridis(limits=c(min(color.min[j], min(obs)), max(color.max[j], max(obs)))) + theme( legend.position = "none"))
   
   print(plot(mesh, linewidth=3, color="gray") + geom_point(data=data.frame(x=locs[,1],y=locs[,2]),
                                                 aes(x=x, y=y, color=obs), size=6) + 
-          scale_color_viridis() + theme( legend.position = "none"))
+          scale_color_viridis(limits=c(min(color.min[j], min(obs)), max(color.max[j], max(obs)))) + theme( legend.position = "none"))
   dev.off()
 }
 
