@@ -147,6 +147,42 @@ normalize_mesh_unit <-function(mesh){
   return(ret)
 }
 
+extract_coeff <- function(FEMObject){
+  elements = NULL
+  mesh = FEMObject$FEMbasis$mesh
+  if( is(mesh, "mesh.2D") | is(mesh, "mesh.2.5D")){
+    elements = mesh$triangles
+  }else if( is(mesh, "mesh.1.5D")){
+    elements = mesh$edges
+  }else{
+    elements = mesh$tetrahedrons # tetrahedrons
+  }
+  coeff <- apply(elements, MARGIN=1, FUN = function(row){
+    mean(FEMObject$coeff[row,])
+  })
+  return(coeff)
+}
+
+smooth_lim <- function(FEMObject, ...){
+  coeff <- extract_coeff(FEMObject)
+  lims = c(1e10, -1e10)
+  lims[1] = min(coeff, lims[1])
+  lims[2] = max(coeff, lims[2])
+  
+  #coeffs_args = list()
+  args = list(...)
+  if( length(args) > 0L){
+    for(i in 1:length(args)){
+      if(! is(args[[i]], "FEM") ) stop("Provides ONLY FEM objects.")
+      coeff = extract_coeff(args[[i]])
+      lims[1] = min(coeff, lims[1])
+      lims[2] = max(coeff, lims[2])
+    }
+  }
+  return(lims)
+}
+
+
 # # post processing --------------------------------------------------------------
 # boxplot_RMSE <- function(RMSE,
 #                          methods,

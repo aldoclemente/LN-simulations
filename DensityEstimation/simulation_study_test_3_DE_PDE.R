@@ -255,16 +255,16 @@ dev.off()
 folder.estimates <- paste0(folder.name,"estimates/") 
 if(!dir.exists(folder.estimates))
   dir.create(folder.estimates)
-
-for(i in 1:SimulationBlock$num_methods){
-  for(j in 1:length(SimulationBlock$n_obs)){
-  pdf(paste0(folder.estimates,"test_3_estimated_field_", 
-             SimulationBlock$Simulations[[i]]$method_name,"_",
-             SimulationBlock$n_obs[j],".pdf"))
-  print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=0.75))
-  dev.off()
-  }
-}
+# 
+# for(i in 1:SimulationBlock$num_methods){
+#   for(j in 1:length(SimulationBlock$n_obs)){
+#   pdf(paste0(folder.estimates,"test_3_estimated_field_", 
+#              SimulationBlock$Simulations[[i]]$method_name,"_",
+#              SimulationBlock$n_obs[j],".pdf"))
+#   print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=0.75))
+#   dev.off()
+#   }
+# }
 
 
 
@@ -272,54 +272,99 @@ for(i in 1:SimulationBlock$num_methods){
 color.min <- rep(0., times = length(SimulationBlock$n_obs))
 color.max <- rep(max(true_density), times = length(SimulationBlock$n_obs))
 
+# No nel caso dei LN devi dare i coeffs.
+smooth_lim(FEM(true_density.FEM, FEMbasis))
+colors = matrix(nrow=4, ncol=2)
+
+colors[,1] = rep(0, times=4)
+colors[,2] = rep(max(true_density.FEM), times = length(SimulationBlock$n_obs))
+
 for(j in 1:length(SimulationBlock$n_obs)){
   for(i in 1:SimulationBlock$num_methods){
-    color.min[j] <- min(min(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
-                        color.min[j])
-    color.max[j] <- max(max(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
-                        color.max[j])
-    }
+    # color.min[j] <- min(min(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+    #                     color.min[j])
+    # color.max[j] <- max(max(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+    #                     color.max[j])
+    # 
+    #tmp = smooth_lim(SimulationBlock$Simulations[[i]]$meanField[[j]])
+    #tmp = min(smooth_lim(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff)
+    colors[j,1] = min(min(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+                      color.min[j])
+    colors[j,2] = max(max(SimulationBlock$Simulations[[i]]$meanField[[j]]$coeff), 
+                      color.max[j])
+    
+  }
 }
 cbind(color.min, color.max)
+colors
 
 for(i in 1:SimulationBlock$num_methods){
   for(j in 1:length(SimulationBlock$n_obs)){
-    pdf(paste0(folder.estimates,"test_3_estimated_field_same_scale_", 
+    # pdf(paste0(folder.estimates,"test_3_estimated_field_same_scale_", 
+    #            SimulationBlock$Simulations[[i]]$method_name,"_",
+    #            SimulationBlock$n_obs[j],".pdf"))
+    # print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3)+
+    #         viridis::scale_color_viridis(limits=c(color.min[i],color.max[i])))
+    # print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3)+
+    #         viridis::scale_color_viridis(limits=c(color.min[i],color.max[i])) + 
+    #         theme( legend.position = "none"))
+    # dev.off()
+    
+    pdf(paste0(folder.estimates,"estimate_", 
                SimulationBlock$Simulations[[i]]$method_name,"_",
                SimulationBlock$n_obs[j],".pdf"))
     print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3)+
-            viridis::scale_color_viridis(limits=c(color.min[i],color.max[i])))
+            viridis::scale_color_viridis(limits=colors[i,]))
     print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3)+
-            viridis::scale_color_viridis(limits=c(color.min[i],color.max[i])) + 
+            viridis::scale_color_viridis(limits=colors[i,]) + 
             theme( legend.position = "none"))
     dev.off()
+    
   }
 }
 
-plot.colorbar(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), 
-              colorscale =  viridis, limits = c(color.min[2], color.max[2]),
-              width = 2,
-              file = paste0(folder.name,"colorbar"))
+for(i in 1:length(SimulationBlock$n_obs)){
+# pdf(paste0(folder.name, "true_field_", n_obs[i], ".pdf"), family = "serif", width = 10, height = 10)
+# print(plot(FEM(true_density.FEM, FEMbasis), linewidth=3) +
+#   scale_color_viridis(limits=c(color.min[i],color.max[i])) +
+#   theme( legend.position = "none"))
+# 
+# print(plot(FEM(true_density.FEM, FEMbasis), linewidth=4) +
+#   scale_color_viridis(limits=c(color.min[i],color.max[i])) +
+#   theme( legend.position = "none"))
+# 
+# print(plot(FEM(true_density.FEM, FEMbasis), linewidth=5) +
+#   scale_color_viridis(limits=c(color.min[i],color.max[i])) +
+#   theme( legend.position = "none"))
+# dev.off()
 
-pdf(paste0(folder.name, "true_field.pdf"), family = "serif", width = 10, height = 10)
-plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=3) +
-  scale_color_viridis(limits=c(color.min[i],color.max[i])) +
-  theme( legend.position = "none")
+pdf(paste0(folder.name, "true_field_", n_obs[i], ".pdf"), family = "serif", width = 10, height = 10)
+print(plot(FEM(true_density.FEM, FEMbasis), linewidth=3) +
+        scale_color_viridis(limits=colors[i,]) +
+        theme( legend.position = "none"))
 
-plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=4) +
-  scale_color_viridis(limits=c(color.min[i],color.max[i])) +
-  theme( legend.position = "none")
+print(plot(FEM(true_density.FEM, FEMbasis), linewidth=4) +
+        scale_color_viridis(limits=colors[i,]) +
+        theme( legend.position = "none"))
 
-plot(FEM(aux_density(mesh$nodes[,1], mesh$nodes[,2]), FEMbasis), linewidth=5) +
-  scale_color_viridis(limits=c(color.min[i],color.max[i])) +
-  theme( legend.position = "none")
+print(plot(FEM(true_density.FEM, FEMbasis), linewidth=5) +
+        scale_color_viridis(limits=colors[i,]) +
+        theme( legend.position = "none"))
 dev.off()
 
-DE_PDE$plot_mean_field(4L,linewidth=0.75) + viridis::scale_color_viridis(limits=c(color.min[4],color.max[4])) +
-  theme(legend.key.height = ggplot2::unit(3,units="cm"),
-        legend.key.width = ggplot2::unit(0.5,units="cm"),
-        legend.key.size = ggplot2::unit(3,units="cm"), title = element_blank()
-  ) 
+
+plot.colorbar(FEM(true_density.FEM, FEMbasis), 
+              colorscale =  viridis, limits = colors[i,],
+              width = 2,
+              file = paste0(folder.name,"colorbar_", n_obs[i]))
+
+}
+
+# DE_PDE$plot_mean_field(4L,linewidth=0.75) + viridis::scale_color_viridis(limits=c(color.min[4],color.max[4])) +
+#   theme(legend.key.height = ggplot2::unit(3,units="cm"),
+#         legend.key.width = ggplot2::unit(0.5,units="cm"),
+#         legend.key.size = ggplot2::unit(3,units="cm"), title = element_blank()
+#   ) 
 
 
 # tabelle
