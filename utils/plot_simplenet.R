@@ -17,7 +17,7 @@ hat_function <- function(x, center, dist){
 }
 
 
-load(simplenet)
+data(simplenet)
 mesh = as.mesh.1.5D(simplenet)
 #fdaPDE:::plot.mesh.1.5D(mesh)
 
@@ -42,3 +42,17 @@ dev.off()
 plot.colorbar(FEM(coeff, FEMbasis), 
               colorscale =  viridis, width = 2, limits = c(0,1),
               file = "simplenet_colorbar")
+# ---
+
+data("dendrite")
+mesh = as.mesh.1.5D(dendrite$domain)
+#fdaPDE:::plot.mesh.1.5D(mesh)
+
+pdf("dendrite.pdf", family = "serif", width = 10, height = 10)
+plot(mesh, linewidth=1, color="darkgray") 
+plot(mesh, linewidth=2, color="darkgray") 
+plot(mesh, linewidth=3, color="darkgray") 
+plot(mesh, linewidth=4, color="darkgray") 
+plot(mesh, linewidth=5, color="darkgray") 
+plot(mesh, linewidth=6, color="darkgray") 
+dev.off()

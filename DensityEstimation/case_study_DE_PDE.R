@@ -6,6 +6,7 @@ pacman::p_load("rstudioapi")
 # setting working directory 
 setwd(dirname(getActiveDocumentContext()$path))
 
+library(splines)
 # loading packages and auxiliary functions
 source("../packages.R")
 source("../settings.R")
@@ -13,8 +14,9 @@ source("../utils/utils.R")
 source("../utils/plot.R")
 source("../utils/Simulation.R")
 source("../utils/CaseStudy.R")
+source("../utils/functions_DE_with_PENALIZED_SPLINE.R")
 data("chicago")
-
+set.seed(0)
 # Competing methods ------------------------------------------------------------
 # methods[1] -> DE-PDE
 # methods[2] -> KDE-HEAT  (available in spatstat package))
@@ -22,10 +24,9 @@ data("chicago")
 # methods[4] -> KDE-2D    (available in spatstat package)
 # methods[5] -> VORONOI   (available in spatstat package, slow      !)
 
-method_names = c("DE-PDE", "KDE-HEAT", "KDE-ES", "KDE-2D", "VORONOI")
-methods = c(T,T,F,T,T)
+method_names = c("DE-PDE", "KDE-HEAT", "KDE-ES", "KDE-2D", "VORONOI", "PSPE")
+methods = c(T,T,F,T,F, T)
 method_names = method_names[methods]
-
 # Fixing domain ----------------------------------------------------------------
 
   vertices = cbind(chicago$domain$vertices$x, chicago$domain$vertices$y)
@@ -91,6 +92,12 @@ KDE_2D <- DensityEstimationCaseStudy(method_name=method_names[3],
 VORONOI <- DensityEstimationCaseStudy(method_name=method_names[4],
                                        n_obs = KfoldObj$num_obs_kFold,
                                        FEMbasis = FEMbasis)  
+
+# PSPE ----------------------------------------------------------------------
+PSPE   <- DensityEstimationCaseStudy(method_name=method_names[5],
+                                      n_obs = KfoldObj$num_obs_kFold,
+                                      FEMbasis = FEMbasis)  
+
 for(j in 1:K){
   cat(paste("-------------------  ", j, " / ", K,"  -------------------\n", sep="") )
   tmp = KfoldObj$get_data(j)
@@ -126,7 +133,7 @@ for(j in 1:K){
   # KDE-2D ---------------------------------------------------------------------
   start = Sys.time()
   invisible(capture.output(bw <- bw.scott(X = PP_train)))
-  invisible(capture.output(output_KDE_2D <- densityQuick.lpp(X = PP_train, sigma = bw))) #, at = points)
+  invisible(capture.output(output_KDE_2D <- densityQuick.lpp(x = PP_train, sigma = bw))) #, at = points)
   cat(paste0("- KDE-2D DONE, time elapsed = ", 
              difftime(Sys.time(),start, units = "mins")," mins \n"))
   
@@ -135,27 +142,43 @@ for(j in 1:K){
   KDE_2D$update_error(test_data,j=j) 
   
   # KDE-VORONOI ----------------------------------------------------------------
-  start = Sys.time()
-  invisible(capture.output(bw = bw.voronoi(X = PP_train) ))
-  invisible(capture.output(output_VORONOI <- densityVoronoi(X = PP_train, sigma = bw)))
-  cat(paste0("- VORONOI DONE, time elapsed = ", 
-             difftime(Sys.time(),start, units = "mins")," mins \n"))
-  
-  coef_ <- as.linfun(output_VORONOI/nrow(train_data))(mesh$nodes[,1], mesh$nodes[,2])
-  VORONOI$update_estimate(estimate = FEM(coef_, FEMbasis),j)
-  VORONOI$update_error(test_data,j)  
-  
+  # start = Sys.time()
+  # invisible(capture.output(bw = bw.voronoi(X = PP_train) ))
+  # invisible(capture.output(output_VORONOI <- densityVoronoi(X = PP_train, sigma = bw)))
+  # cat(paste0("- VORONOI DONE, time elapsed = ", 
+  #            difftime(Sys.time(),start, units = "mins")," mins \n"))
+  # 
+  # coef_ <- as.linfun(output_VORONOI/nrow(train_data))(mesh$nodes[,1], mesh$nodes[,2])
+  # VORONOI$update_estimate(estimate = FEM(coef_, FEMbasis),j)
+  # VORONOI$update_error(test_data,j)
+  # 
+  ### PSPE--------------------------------------------------------------------
+  # delta <- 1e-1/16
+  # h <- 0.0125
+  # r <- 2
+  # L <- lpp(as.ppp(PP_train), as.linnet(spat.stat.linnet$domain))
+  # L <- augment.linnet(as.linnet(L$domain), delta, h, r)
+  # # 
+  # start = Sys.time()
+  # output_PSPE <- intensity.pspline.lpp(lpp(PP_train, L))
+  # cat(paste0("- PSPE DONE, time elapsed = ", 
+  #             difftime(Sys.time(),start, units = "mins")," mins \n"))
+  # PSPE$update_estimate(estimate = FEM(coef_, FEMbasis),i,j)
+  # PSPE$update_error(true_density, test_locs=test_locs,i,j=j)  
+   
   DE_PDE$compute_mean_field(j)
   KDE_HEAT$compute_mean_field(j)
   KDE_2D$compute_mean_field(j)
-  VORONOI$compute_mean_field(j)
+  #VORONOI$compute_mean_field(j)
 }
 
 save(DE_PDE, KDE_HEAT, KDE_2D, VORONOI, folder.name,
      file = paste0(folder.name,"data",".RData"))
 
 # Post processing --------------------------------------------------------------
-SimulationBlock <- BlockCaseStudy(list(DE_PDE, KDE_HEAT, KDE_2D, VORONOI))
+#SimulationBlock <- BlockCaseStudy(list(DE_PDE, KDE_HEAT, KDE_2D, VORONOI))
+SimulationBlock <- BlockCaseStudy(list(DE_PDE, KDE_HEAT, KDE_2D))
+
 
 title.size <- 26
 MyTheme <- theme(
@@ -211,32 +234,54 @@ colors <- cbind(color.min, color.max)
 
 for(i in 1:SimulationBlock$num_methods){
   for(j in 1:length(SimulationBlock$n_obs)){
-    pdf(paste0(folder.estimates,"test_3_estimated_field_", 
+    pdf(paste0(folder.estimates,"estimates_", 
                SimulationBlock$Simulations[[i]]$method_name,"_",j,".pdf"))
     print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=1.) +
+            viridis::scale_color_viridis(limits=c(colors[j,1],colors[j,2])))
+    print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=1.) +
             viridis::scale_color_viridis(limits=c(colors[j,1],colors[j,2])) +  # option = "turbo"
-            labs(title=SimulationBlock$Simulations[[i]]$method_name) + MyTheme )
+            theme( legend.position = "none"))
+    
+    print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=2) +
+            viridis::scale_color_viridis(limits=c(colors[j,1],colors[j,2])))
+    print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=2) +
+            viridis::scale_color_viridis(limits=c(colors[j,1],colors[j,2])) +  # option = "turbo"
+            theme( legend.position = "none"))
+    
+    print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3) +
+            viridis::scale_color_viridis(limits=c(colors[j,1],colors[j,2])))
+    print(SimulationBlock$Simulations[[i]]$plot_mean_field(j,linewidth=3) +
+            viridis::scale_color_viridis(limits=c(colors[j,1],colors[j,2])) +  # option = "turbo"
+            theme( legend.position = "none"))
     dev.off()
   }
 }
 
+for(i in 1:SimulationBlock$length_obs)
+plot.colorbar(DE_PDE$meanField[[i]], 
+              colorscale =  viridis, limits = colors[i,],
+              width = 2,
+              file = paste0(folder.name,"colorbar_", i))
+
 
 head(SimulationBlock$results)
-col_names <- names(summary(c(1)))
+col_names <- names(summary(c(1))) # sd
 rmse_table <- matrix(0, nrow=SimulationBlock$num_methods, 
-                     ncol=length(col_names))
+                     ncol=length(col_names)+1)
 
 for(j in 1:length(SimulationBlock$method_names)){
     rmse_table_method <- SimulationBlock$results[SimulationBlock$results$method == SimulationBlock$method_names[j],1]
   
-    rmse_table[j,] = summary(rmse_table_method)
-}
+    rmse_table[j,1:length(col_names)] = summary(rmse_table_method)
+    rmse_table[j,length(col_names)+1] = sd(rmse_table_method)
+  }
 
-colnames(rmse_table) <- col_names
+colnames(rmse_table) <- c(col_names, "sd")
 rownames(rmse_table) <- SimulationBlock$method_names
 
 write.table(format(rmse_table, digits=4), 
             file=paste0(folder.name,"case_study_CV_error.txt"))  
+rmse_table
 
 # Chicago map 
 pacman::p_load("leaflet", "leaflet.providers", "mapview", "webshot2")
