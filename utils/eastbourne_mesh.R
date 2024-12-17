@@ -225,7 +225,7 @@ w <- 7 # width
 h <- 7 # height
 
 {
-pdf(paste0(destdir,"hat_function.pdf"),family = "serif", width = h, height = w)
+pdf(paste0(destdir,"eastbourne_zoom_hat_functions.pdf"),family = "serif", width = h, height = w)
 for(i in 1:nrow(filtered$nodes)){
   center = i
   coeff <- hat_function(filtered_ref$nodes, filtered_ref, center, delta, dist_mat)
@@ -237,8 +237,8 @@ for(i in 1:nrow(filtered$nodes)){
 dev.off()
 }
 plot.colorbar(FEM(coeff, FEMbasis), 
-              colorscale =  viridis, width = 2, limits = c(0,1),
-              file = paste0(destdir,"colorbar"))
+              colorscale =  jet.col, width = 2, limits = c(0,1),
+              file = paste0(destdir,"eastbourne_hat_colorbar"))
 
 
 
