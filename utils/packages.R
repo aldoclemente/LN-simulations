@@ -30,7 +30,7 @@ if(!require(shp2graph, quietly = TRUE)){
 }
 
 pacman::p_load("fdaPDE", "spatstat", "shp2graph", 
-               "igraph", "spam", "GWmodel")
+               "igraph", "spam", "GWmodel", "MetricGraph")
 
 library(diffusionMaps, quietly = TRUE)
 library(KrigLinCaution, quietly = TRUE)
