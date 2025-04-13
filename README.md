@@ -8,8 +8,6 @@ This repository contains the code necessary to reproduce the results presented i
    -   nonparametric_regression_4.R [Figure 4 and Figure 3, right panel]
 -  **[Section 5.4]**
    -   nonparametric_density_1.R [Figure 5]
--  **[Section 6] Application 1: London Houses Price**
-   -   london_houses_price.R [Figure 6]
 -  **[Section 7] Application 2: Chicago Crime Data**
    -   chicago_crime_data.R [Figure 7, right panel]
    

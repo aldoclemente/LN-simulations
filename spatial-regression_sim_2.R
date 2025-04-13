@@ -1,4 +1,4 @@
-# nonparametric regression - simulation 4 - cluster data + matern error
+# nonparametric regression - simulation 2 - cluster data + matern error
 graphics.off()
 rm(list=ls())
 set.seed(0)
@@ -34,11 +34,11 @@ nnodes = nrow(mesh$nodes)
 spatstat.linnet = as.linnet(mesh)
 
 # NO RR-Krig 
-method_names = c("NRG", "GWR", "Lattice", "WMG", "IsoExp")
+method_names = c("NRG", "GWR", "Lattice", "WMG")#, "IsoExp")
 # Test Hyperparameters ---------------------------------------------------------
 
-n_obs = as.integer(c(50, 100, 150, 250)) 
-lambda = 10^seq(from=-4, to=-3,length.out = 20)
+n_obs = as.integer(c(100, 150, 250, 500)) 
+lambda = 10^seq(from=-8, to=-6,length.out = 250)
 sources = c(6,7)         
 n_sim = 30L
 
@@ -93,7 +93,7 @@ if(!dir.exists(folder.name)) {
   dir.create(folder.name)
 }
 
-folder.name = paste0(folder.name, "simulation_4/")
+folder.name = paste0(folder.name, "simulation_2/")
 if(!dir.exists(folder.name)) {
   dir.create(folder.name)
 }
@@ -122,17 +122,18 @@ WMG <- SpatialRegressionSimulation(method_name=method_names[4],
                                    FEMbasis = FEMbasis)
 
 # Isotropic Exponential Cov Function (Andares 2020 AoS)  -----------------------
-IsoExp <- SpatialRegressionSimulation(method_name=method_names[5],
-                                      n_obs = n_obs, n_sim = n_sim,
-                                      FEMbasis = FEMbasis)
-inla.graph$check_euclidean()
+# IsoExp <- SpatialRegressionSimulation(method_name=method_names[5],
+#                                       n_obs = n_obs, n_sim = n_sim,
+#                                       FEMbasis = FEMbasis)
+#inla.graph$check_euclidean()
 inla.predict <- data.frame(edge_number = inla.graph$mesh$VtE[,1],
-                           distance_on_edge = inla.graph$mesh$VtE[,2])
+                            distance_on_edge = inla.graph$mesh$VtE[,2])
 
 
 locations = rep(list(), times=n_sim*length(n_obs))
 OBSERVATIONS = rep(list(), times=n_sim * length(n_obs))
 # Loop -------------------------------------------------------------------------
+pdf(paste0(folder.name, "gcv.pdf"))
 for(j in 1:length(n_obs)){
   cat(paste("-------------------  n = ", n_obs[j], "  -------------------\n", sep="") )
   for(i in 1:n_sim){
@@ -159,6 +160,9 @@ for(j in 1:length(n_obs)){
                                                       lambda.selection.criterion = "grid",
                                                       lambda.selection.lossfunction = "GCV",
                                                       DOF.evaluation = "stochastic"))) # "stochastic"
+    
+    print(plot(lambda, output_CPP$optimization$GCV_vector, type="l", lwd=2,
+               xlab=expression(lambda), ylab="", main=paste0("obs: ", n_obs[j], ", sim: ", i)))
     
     y_hat = eval.FEM(output_CPP$fit.FEM, locations = locs)
     SR_PDE$update_estimate(estimate = output_CPP$fit.FEM,i = i, j=j)
@@ -228,34 +232,34 @@ for(j in 1:length(n_obs)){
     WMG$update_y_hat(vec =y_hat, i = i, j = j)
     WMG$update_error(y_hat = eval.FEM(FEM(inla.coeffs$mean, FEMbasis), locations = test_locations),
                      y_true=test_true,i,j)
-    #inla.graph$clear_observations()
+    inla.graph$clear_observations()
     
     # Iso Exp (Andares (2020) AoS ) --------------------------------------------
     #inla.graph$add_observations(Sp.data)
-    fit <- graph_lme(y ~ 1, graph = inla.graph, model = "isoExp")
-    
-    inla.coeffs <- predict(fit, newdata= inla.predict, normalized = TRUE)
-    
-    y_hat = eval.FEM(FEM(inla.coeffs$mean, FEMbasis), locations = locs)
-    IsoExp$update_estimate(estimate = FEM(inla.coeffs$mean, FEMbasis),i = i, j=j)
-    IsoExp$update_y_hat(vec =y_hat, i = i, j = j)
-    IsoExp$update_error(y_hat = eval.FEM(FEM(inla.coeffs$mean, FEMbasis), locations = test_locations),
-                        y_true=test_true,i,j)
-    inla.graph$clear_observations()
+    # fit <- graph_lme(y ~ 1, graph = inla.graph, model = "isoExp")
+    # 
+    # inla.coeffs <- predict(fit, newdata= inla.predict, normalized = TRUE)
+    # 
+    # y_hat = eval.FEM(FEM(inla.coeffs$mean, FEMbasis), locations = locs)
+    # IsoExp$update_estimate(estimate = FEM(inla.coeffs$mean, FEMbasis),i = i, j=j)
+    # IsoExp$update_y_hat(vec =y_hat, i = i, j = j)
+    # IsoExp$update_error(y_hat = eval.FEM(FEM(inla.coeffs$mean, FEMbasis), locations = test_locations),
+    #                     y_true=test_true,i,j)
+    # inla.graph$clear_observations()
   }
   SR_PDE$compute_mean_field(j)
   GWR$compute_mean_field(j)
   Lattice$compute_mean_field(j)
   WMG$compute_mean_field(j)
-  IsoExp$compute_mean_field(j)
+  #IsoExp$compute_mean_field(j)
 }                                     
+dev.off()
 
-save(SR_PDE, GWR, Lattice, WMG,  IsoExp, locations, OBSERVATIONS,
+save(SR_PDE, GWR, Lattice, WMG, locations, OBSERVATIONS,
      folder.name,
      file = paste0(folder.name,"data",".RData"))
 
 # Post processing --------------------------------------------------------------
-
 SimulationBlock <- BlockSimulation(list(SR_PDE, GWR, Lattice, WMG))#, IsoExp))
 
 title.size <- 26
@@ -285,7 +289,7 @@ ORDER = c(1,4,2,3) #, 5)
 
 {
   plt <- boxplot(SimulationBlock, ORDER) +
-    labs(title="RMSE", x="observations") + ylim(c(0,0.08)) +
+    labs(title="RMSE", x="observations") + ylim(c(0,0.02)) +
     theme(legend.position = "none")  +
     MyTheme
   ggsave(paste0(folder.name, "RMSE-no-legend.pdf"), plot=plt, width = 8, height = 7) 
@@ -385,19 +389,14 @@ rmse_table_wmg <- matrix(WMG$errors, nrow=SimulationBlock$num_sim,
 colMeans(rmse_table_wmg)
 apply(rmse_table_wmg, MARGIN = 2, sd)
 
-# Iso Exp
-rmse_table_isoexp <- matrix(IsoExp$errors, nrow=SimulationBlock$num_sim, 
-                            ncol=length(SimulationBlock$n_obs))
-
 tmp <- cbind(colMeans(rmse_table_sr_pde), apply(rmse_table_sr_pde, MARGIN = 2, sd),
              colMeans(rmse_table_gwr), apply(rmse_table_gwr, MARGIN = 2, sd),
              colMeans(rmse_table_lattice), apply(rmse_table_lattice, MARGIN = 2, sd),
-             colMeans(rmse_table_wmg), apply(rmse_table_wmg, MARGIN = 2, sd),
-             colMeans(rmse_table_isoexp), apply(rmse_table_isoexp, MARGIN = 2, sd))
+             colMeans(rmse_table_wmg), apply(rmse_table_wmg, MARGIN = 2, sd))
 
 colnames(tmp) <- c("NRG-mean", "NRG-sd", "GWR-mean", "GWR-sd", 
                    "Lattice-mean", "Lattice-sd",
-                   "WMG-mean", "WMG-sd", "IsoExp-mean", "IsoExp-sd")
+                   "WMG-mean", "WMG-sd")
 rownames(tmp) <- n_obs
 
 write.table( round(tmp, digits = 4), paste0(folder.name, "table-mean-sd.txt"))
@@ -407,12 +406,11 @@ write.table( round(tmp, digits = 4), paste0(folder.name, "table-mean-sd.txt"))
 tmp <- cbind(apply(rmse_table_sr_pde, MARGIN=2, median), apply(rmse_table_sr_pde, MARGIN = 2, IQR),
              apply(rmse_table_gwr, MARGIN = 2, median), apply(rmse_table_gwr, MARGIN = 2, IQR),
              apply(rmse_table_lattice, MARGIN = 2, median), apply(rmse_table_lattice, MARGIN = 2, IQR),
-             apply(rmse_table_wmg, MARGIN = 2, median), apply(rmse_table_wmg, MARGIN = 2, IQR),
-             apply(rmse_table_isoexp, MARGIN = 2, median), apply(rmse_table_isoexp, MARGIN = 2, IQR))
+             apply(rmse_table_wmg, MARGIN = 2, median), apply(rmse_table_wmg, MARGIN = 2, IQR))
 
 colnames(tmp) <- c("NRG-Q2", "NRG-IQR", "GWR-Q2", "GWR-IQR", 
                    "Lattice-Q2", "Lattice-IQR",
-                   "WMG-Q2", "WMG-IQR", "IsoExp-Q2", "IsoExp-IQR")
+                   "WMG-Q2", "WMG-IQR")
 rownames(tmp) <- n_obs
 
 write.table( round(tmp, digits = 4), paste0(folder.name, "table-median-IQR.txt"))

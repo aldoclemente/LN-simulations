@@ -4,9 +4,6 @@ if(!require(pacman)) install.packages("pacman")
 pacman::p_load("shp2graph", "sfnetworks", "tidygraph", "GWmodel", 
                "fdaPDE", "spatstat", "sf", "MetricGraph")
 
-# setting working directory 
-setwd(dirname(getActiveDocumentContext()$path))
-
 source("utils/utils.R")
 source("utils/plot.R")
 source("utils/Simulation.R")
@@ -39,7 +36,7 @@ sfnetwork <- sfnetwork %>%
   convert(to_components, .clean = TRUE, .select = 1L)
 
 mesh <- as.mesh.1.5D(sfnetwork)
-FEMbasis <- create.FEM.basis(mesh)
+FEMbasis <- create.FEM.basis(mesh) # 75234 nodes, 96677 edeges
 
 # data 
 data(LNHP)
@@ -82,70 +79,70 @@ if(!dir.exists(folder.name)) {
 }
 
 # plot -------------------------------------------------------------------------
-pacman::p_load("leaflet", "leaflet.providers", "mapview", "webshot2")
-
-map.type <- "Esri.WorldTopoMap" # Esri.WorldGrayCanvas "Stadia.AlidadeSmooth" bella ma
-map_1 <- mapview(st_as_sf(sfnetwork, "edges"), color="black", alpha=0.7, lwd=0.45,
-                 layer.name="road-network", map.type=map.type)
-map_2 <- mapview(st_as_sf(data, crs=4326), zcol="response", legend=F, alpha=1, cex=3, 
-                 layer.name="data", map.type=map.type)
-map <- map_1 + map_2
-map
-
-nodes <- sfnetwork %>%
-  activate("nodes") %>%
-  st_as_sf()
-nodes <- as_Spatial(nodes)
-
-cntr_crds <- c(mean(coordinates(nodes)[, 1]),
-               mean(coordinates(nodes)[, 2]))
-
-map@map <- map@map %>% setView(cntr_crds[1], cntr_crds[2], zoom = 10) 
-
-html_fl = paste0(folder.name, "case-study-map.html")
-png_fl = paste0(folder.name, "case-study-map.png")
-
-mapshot2(map, url = html_fl, file = png_fl, delay=10, cliprect = c(190,135, 600,500), zoom=1.5  )#"viewport")
-
-# pdf_fl = paste0(folder.name, "case-study-map.pdf")
-# mapshot2(map, url = html_fl, file = pdf_fl, delay=15, cliprect = c(300,200, 600,500), zoom=1  )#"viewport")
-
-# add rect
-rect_coords <- data.frame(lng1 =-0.13900 , lat1=51.52954 , lng2=-0.08737, lat2=51.51076)
-map@map <- map@map %>% 
-  addRectangles(lng1=rect_coords$lng1, lat1=rect_coords$lat1, 
-                lng2=rect_coords$lng2, lat2=rect_coords$lat2, 
-                fillColor = "transparent",color = "red", 
-                opacity = 1, weight = 2, group = "rect")
-
-html_fl = paste0(folder.name, "case-study-map_rect.html")
-png_fl = paste0(folder.name, "case-study-map_rect.png")
-
-mapshot2(map, url = html_fl, file = png_fl, delay=10, cliprect = c(190,135, 600,500), zoom=1.5  )#"viewport")
-
-# zoom 
-map1 <- mapview(st_as_sf(sfnetwork, "edges"), color="black", alpha=0.7, lwd=1,
-        layer.name="road-network", map.type=map.type) # Stadia.AlidadeSmooth OpenStreetMap
-
-map1@map <- map1@map %>% fitBounds(lng1= (rect_coords$lng1-0.00025*rect_coords$lng1),
-                      lat1= (rect_coords$lat1-0.00025*rect_coords$lat1),
-                      lng2= (rect_coords$lng2+0.00025*rect_coords$lng2),
-                      lat2= (rect_coords$lat2+0.00025*rect_coords$lat2))%>% 
-  addRectangles(lng1=rect_coords$lng1, lat1=rect_coords$lat1, 
-                          lng2=rect_coords$lng2, lat2=rect_coords$lat2, 
-                          fillColor = "transparent",color = "red", 
-                          opacity = 1, weight = 2, group = "rect") %>%
-            addLayersControl(
-                  baseGroups ="road-network",
-                  overlayGroups =c("rect", "data"),
-                  options = layersControlOptions(collapsed = FALSE)) %>% 
-            hideGroup(group="rect")
-map1
-
-html_fl = paste0(folder.name, "case-study-map_zoom.html")
-png_fl = paste0(folder.name, "case-study-map_zoom.png")
-
-mapshot2(map1, url = html_fl, file = png_fl, delay=10, cliprect = c(190,135, 600,500), zoom=1.5  )#"viewport")
+# pacman::p_load("leaflet", "leaflet.providers", "mapview", "webshot2")
+# 
+# map.type <- "Esri.WorldTopoMap" # Esri.WorldGrayCanvas "Stadia.AlidadeSmooth" bella ma
+# map_1 <- mapview(st_as_sf(sfnetwork, "edges"), color="black", alpha=0.7, lwd=0.45,
+#                  layer.name="road-network", map.type=map.type)
+# map_2 <- mapview(st_as_sf(data, crs=4326), zcol="response", legend=F, alpha=1, cex=3, 
+#                  layer.name="data", map.type=map.type)
+# map <- map_1 + map_2
+# map
+# 
+# nodes <- sfnetwork %>%
+#   activate("nodes") %>%
+#   st_as_sf()
+# nodes <- as_Spatial(nodes)
+# 
+# cntr_crds <- c(mean(coordinates(nodes)[, 1]),
+#                mean(coordinates(nodes)[, 2]))
+# 
+# map@map <- map@map %>% setView(cntr_crds[1], cntr_crds[2], zoom = 10) 
+# 
+# html_fl = paste0(folder.name, "case-study-map.html")
+# png_fl = paste0(folder.name, "case-study-map.png")
+# 
+# mapshot2(map, url = html_fl, file = png_fl, delay=10, cliprect = c(190,135, 600,500), zoom=1.5  )#"viewport")
+# 
+# # pdf_fl = paste0(folder.name, "case-study-map.pdf")
+# # mapshot2(map, url = html_fl, file = pdf_fl, delay=15, cliprect = c(300,200, 600,500), zoom=1  )#"viewport")
+# 
+# # add rect
+# rect_coords <- data.frame(lng1 =-0.13900 , lat1=51.52954 , lng2=-0.08737, lat2=51.51076)
+# map@map <- map@map %>% 
+#   addRectangles(lng1=rect_coords$lng1, lat1=rect_coords$lat1, 
+#                 lng2=rect_coords$lng2, lat2=rect_coords$lat2, 
+#                 fillColor = "transparent",color = "red", 
+#                 opacity = 1, weight = 2, group = "rect")
+# 
+# html_fl = paste0(folder.name, "case-study-map_rect.html")
+# png_fl = paste0(folder.name, "case-study-map_rect.png")
+# 
+# mapshot2(map, url = html_fl, file = png_fl, delay=10, cliprect = c(190,135, 600,500), zoom=1.5  )#"viewport")
+# 
+# # zoom 
+# map1 <- mapview(st_as_sf(sfnetwork, "edges"), color="black", alpha=0.7, lwd=1,
+#         layer.name="road-network", map.type=map.type) # Stadia.AlidadeSmooth OpenStreetMap
+# 
+# map1@map <- map1@map %>% fitBounds(lng1= (rect_coords$lng1-0.00025*rect_coords$lng1),
+#                       lat1= (rect_coords$lat1-0.00025*rect_coords$lat1),
+#                       lng2= (rect_coords$lng2+0.00025*rect_coords$lng2),
+#                       lat2= (rect_coords$lat2+0.00025*rect_coords$lat2))%>% 
+#   addRectangles(lng1=rect_coords$lng1, lat1=rect_coords$lat1, 
+#                           lng2=rect_coords$lng2, lat2=rect_coords$lat2, 
+#                           fillColor = "transparent",color = "red", 
+#                           opacity = 1, weight = 2, group = "rect") %>%
+#             addLayersControl(
+#                   baseGroups ="road-network",
+#                   overlayGroups =c("rect", "data"),
+#                   options = layersControlOptions(collapsed = FALSE)) %>% 
+#             hideGroup(group="rect")
+# map1
+# 
+# html_fl = paste0(folder.name, "case-study-map_zoom.html")
+# png_fl = paste0(folder.name, "case-study-map_zoom.png")
+# 
+# mapshot2(map1, url = html_fl, file = png_fl, delay=10, cliprect = c(190,135, 600,500), zoom=1.5  )#"viewport")
 
 # 10-folds Cross Validation ---------------------------------------------------- 
 data <- as.data.frame(data)
@@ -167,6 +164,7 @@ GWR <- SpatialRegressionCaseStudy(method_name="GWR",
 
 
 for(j in 1:K){
+  cat(paste("-------------------  ", j, " / ", K,"  -------------------\n", sep="") )
   tmp = KfoldObj$get_data(j)
   train_data = tmp$train_data
   test_data = tmp$test_data

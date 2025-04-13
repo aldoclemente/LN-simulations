@@ -8,8 +8,14 @@ aux = function(x, y, seg, tp, sigma= 0.125,
   PP = ppp(x = x, y = y, window = nodes.lpp$window)
   ND = crossdist.lpp(lpp(nodes.lpp, L), lpp(PP, L))
   
-  return(   0.25 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[1],]^2/(2*sigma^2)) + 
-              0.25 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[2],]^2/(2*sigma^2)))
+  res = 0.
+  for( k in 1:length(source)){
+    res = res + 1./(2*length(source)) * 1./sqrt(2*pi*sigma^2) * exp(-ND[source[k],]^2/(2*sigma^2))
+  }
+  
+  return(res)
+  #return(   0.25 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[1],]^2/(2*sigma^2)) + 
+  #            0.25 * 1/sqrt(2*pi*sigma^2) * exp(-ND[source[2],]^2/(2*sigma^2)))
   
   
 }
