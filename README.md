@@ -8,7 +8,7 @@ This repository contains the code necessary to reproduce the results presented i
    -   spatial-regression_sim_2.R [Figure 4 and Figure 3, right panel]
 -  **[Section 6.3]**
    -   density-estimation_sim_1.R [Figure 5]
--  **[Section 7.2] Application 2: Chicago Crime Data**
+-  **[Section 7.2]** 
    -   density-estimation_chicago.R [Figure 7, right panel]
    
 **Note**
